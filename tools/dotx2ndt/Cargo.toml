@@ -1,0 +1,19 @@
+[package]
+name = "dotx2ndt"
+version = "0.2.0"
+edition.workspace = true
+license = "EUPL-1.2"
+authors.workspace = true
+description = "Extracts Word .dotx paragraph styles and converts them to a NORMAXIS NDT named-styles JSON skeleton"
+
+[[bin]]
+name = "dotx2ndt"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+zip = { version = "2", default-features = false, features = ["deflate"] }
+roxmltree = "0.20"
+serde = { workspace = true }
+serde_json.workspace = true
+thiserror.workspace = true
