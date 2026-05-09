@@ -31,7 +31,7 @@ license = "EUPL-1.2"
 authors.workspace = true
 description = "Institutional PDF generation for Portuguese public administration"
 repository = "https://github.com/carloscanutocosta/mini-apps"
-keywords = ["pdf", "institutional", "portugal", "public-administration", "normaxis"]
+keywords = ["pdf", "institutional", "portugal", "public-admin", "normaxis"]
 categories = ["rendering", "template-engine"]
 exclude = ["examples/templates/*.pdf"]
 
