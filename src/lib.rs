@@ -66,6 +66,7 @@ pub mod template;
 pub mod signing;
 pub mod ndf;
 pub mod compliance;
+pub mod ffi;
 
 // ── Error handling ────────────────────────────────────────────────────────────
 

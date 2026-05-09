@@ -1,0 +1,55 @@
+# normordis-pdf — TODO
+
+##  ✅ Implementado (confirmado)
+
+**v1.0–v1.5 completo:**
+
+- Todos os elementos de layout (tabelas, listas, fixed boxes, footnotes, TOC, AcroForm)
+- Named styles com herança, tab stops, espaçamento tipográfico
+- rustybuzz 0.20 (shaping OpenType), Knuth-Plass (217 linhas em layout/knuth_plass.rs)
+- Underline, strikethrough, highlight — renderizados em paragraph.rs
+- ParagraphBorder (w:pBdr), SectionBreak portrait/landscape
+fontdb e hyphenation como feature flags opcionais
+
+**v2.0–v2.4 completo:**
+
+- Backend pdf-writer, font subsetting, PDF/A-1b/2b, PDF/UA-2
+- Assinaturas digitais (two-phase ByteRange), NDF/NDT/NCRTF pipeline
+- TraceabilityMetadata, classificação de segurança
+- TOC com links clicáveis, InstitutionalHeader
+
+**ndt-tools**: toml2ndt, ndt2toml, validate, pretty, pdf-inspect — todos implementados  
+
+---
+
+## ⏳ Pendente
+| Item | Esforço | Notas |
+| ----- | ----- | ----- |
+| Superscript / Subscript | Baixo | `AppliedStyle` tem os campos; falta renderizar (66% font size + offset Y em `paragraph.rs`) |
+| Small caps	| Baixo | `MarkValue::SmallCaps` existe; falta renderizar (maiúsculas a 80%) |
+| Hyphenation activada | Médio | Feature flag existe, crate incluída; falta integrar no line-breaker |
+| Knuth-Plass activado end-to-end | Médio | Algoritmo existe em `layout/knuth_plass.rs`; não confirmado se está ligado à renderização de parágrafos |
+| System fonts via fontdb | Médio | Dep opcional existe; `FontRegistry::from_system()` pode estar por implementar |
+| TSA timestamp (RFC 3161) | Alto | Mencionado no roadmap para assinaturas qualificadas eIDAS; nenhum código encontrado |
+| generate_ndt_schema!() proc macro | Alto | Macro de compile-time para gerar structs Rust com {{placeholders}} do .dotx |
+| veraPDF no CI | Infra | Ferramenta externa; integração no pipeline GitHub Actions |
+
+---
+
+## Baixo esforço
+- Superscript / Subscript — renderizar em `paragraph.rs`: 66% font size + offset Y calculado a partir das métricas da fonte  
+- Small caps — renderizar em `paragraph.rs`: maiúsculas a 80% do tamanho normal  
+
+## Médio esforço
+- **PDF/A-4u** (ISO 19005-4:2020) — novo `PdfStandard::PdfA4u`; XMP `pdfaid:part=4 conformance=U`; header PDF 2.0 (já disponível via pdf-writer); ToUnicode já gerado
+- **Knuth-Plass end-to-end** — confirmar se `layout/knuth_plass.rs` está ligado ao rendering de parágrafos ou é dead code; ativar via feature flag `optimal_wrap`  
+- **Hyphenation PT-PT** — dep opcional já incluída (`hyphenation = "0.8"`); integrar no line-breaker de `layout/engine.rs`  
+- **System fonts via fontdb** — dep opcional já incluída; implementar `FontRegistry::from_system()` e `from_dir()`  
+
+## Alto esforço
+- **TSA timestamp (RFC 3161)** — carimbo de tempo qualificado para assinaturas eIDAS; requer chamada a servidor TSA externo
+- **generate_ndt_schema!() proc macro** — detecta `{{placeholders}}` num `.dotx` em compile-time e gera struct Rust type-safe
+
+## Infra / CI
+- **veraPDF no CI** — validação automática PDF/A em GitHub Actions (veraPDF é gratuito e corre em Java)
+
