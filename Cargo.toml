@@ -31,10 +31,12 @@ license = "EUPL-1.2"
 authors.workspace = true
 description = "Institutional PDF generation for Portuguese public administration"
 repository = "https://github.com/carloscanutocosta/mini-apps"
-license-file = "LICENSE"
 keywords = ["pdf", "institutional", "portugal", "public-administration", "normaxis"]
 categories = ["rendering", "template-engine"]
 exclude = ["examples/templates/*.pdf"]
+
+[lib]
+crate-type = ["lib", "cdylib"]
 
 [dependencies]
 chrono.workspace = true

@@ -6,6 +6,193 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) — versions fo
 
 ---
 
+## [Unreleased] — 2026-05-09
+
+### Added
+
+- **PDF bookmarks / document outline** — `Outline` / `OutlineItem` structs; `DocumentBuilder::outline()` builder; PDF `/Outlines` dict written in `finish()`; headings auto-registered when `outline_headings: true`
+- **TOC clickable GoTo links** — TOC entries rendered as `/Link` annotations with `/GoTo` destinations pointing to the target page; `TocEntry::dest_ref` field
+- **`InstitutionalHeader::render()`** — standardised institutional page header element with logo slot, entity name, and document reference line
+
+### Changed
+
+- **Crate renamed** from `normaxis-pdf` to `normordis-pdf`; package, Rust crate name (`normordis_pdf`), and all `use` paths updated across the workspace
+
+### Fixed
+
+- **Widow / orphan control** — `PageFlow` detects when fewer than `min_lines` lines would remain at the bottom of a page and forces a page break before the paragraph
+
+---
+
+## [2.4.1] — 2026-05-08
+
+### Added
+
+- **`pdfuaid` XMP namespace** — `build_xmp_pdfu2()` now emits `pdfuaid:part=2 pdfuaid:rev=2024` in the XMP metadata packet, required for PDF/UA-2 conformance
+- **Artifact marking for decorative content** — watermark, header, footer, and decorative rules are wrapped in `/Artifact` marked-content sequences when UA is enabled
+- **`LI` → `Lbl` + `LBody` structure** — list items now emit proper PDF/UA-2 sub-structure (`/Lbl` for the bullet/number, `/LBody` for the text content)
+
+### Fixed
+
+- **`InvalidRootTag("P")`** validation error — `StructureTree` root is now always `/Document`; was emitting `/P` when the first flow element was a paragraph
+
+---
+
+## [2.4.0] — 2026-05-06
+
+### Added
+
+- **`PdfStandard::PdfUa2`** — ISO 14289-2:2024 accessibility standard; standalone (does not imply PDF/A)
+- **`AccessibilityConfig`** — `{ enabled: bool, lang: String }`; attached via `DocumentBuilder::accessibility()`; auto-enabled when `standard(PdfUa2)` is set
+- **`StructureTree`** — event-driven structure tree builder: `begin_group`, `end_group`, `tag_content`; emits `/StructTreeRoot` and `/ParentTree` in `finish()`
+- **`StructTag`** — 37 PDF role variants (`Document`, `H1`–`H6`, `P`, `L`, `LI`, `Table`, `TH`, `TD`, `Figure`, `Artifact`, …) with `Serialize` + `Deserialize`
+- **`UaValidator`** — validates the structure tree before serialisation; reports warnings for missing `Alt` text on figures, empty headings, etc.
+- **Tagged elements** — `Section` (H1–H6), `Paragraph` (P), `BulletList` / `OrderedList` / `CheckList` (L / LI), `Table` (Table / THead / TBody / TR / TH / TD), `ImageElement` (Figure), header / footer / watermark (Artifact), `FixedTextBox` / `FixedImageBox` (configurable role)
+- **`FixedBox::ua_role` / `ua_alt`** — serde fields + `.role()` / `.alt()` builder methods for fixed-position elements
+- **NDF 1.1.0 pipeline** — `compile_ndt()`, `render_ndf()`, `parse_ndf()`, `verify_ndf()`, `NdfDocument`, `NdfIntegrity` (SHA-256 / JCS), `NdfRevision`
+- **JCS canonical JSON** — `jcs::canonicalise()` with UTF-16 key ordering; requires `serde_json` feature `preserve_order`
+- **NCRTF 1.3.0 fixes** — `MarkValue::SmallCaps`, `MarkValue::UnderlineColor`, `MarkValue::StrikethroughColor`, `ParagraphBlock::style`, `TextNode::opentype_features`
+- **`NdtOutput::accessibility`** — optional `AccessibilityConfig` in NDT 2.0 `output` block; `"pdf_ua2"` standard key
+- **`examples/13_accessibility.rs`** — full PDF/UA-2 example
+- **`tests/v210_accessibility.rs`** — 34 tests; **`tests/formats.rs`** — 42 NDF tests
+
+### Changed
+
+- `serde_json` overridden with `features = ["preserve_order"]` for JCS canonical key ordering
+- `ENGINE_NDT_VERSION` bumped to `"2.1.0"`; version check accepts `template_major ≤ engine_major`
+- `NormaxisPdfError` gains `NdfIntegrityError`, `NdfAuditError`, `NdfRevisionError`, `NdfCompileError`, `AccessibilityError`, `SerdeError` variants
+
+---
+
+## [2.3.0] — 2026-05-05
+
+### Added
+
+- **Digital signature two-phase API** — `DocumentBuilder::render_prepared_for_signing(opts)` returns a `PreparedPdf`; `PreparedPdf::embed_signature(pkcs7_der)` splices the PKCS#7 DER blob in-place
+- **`SignatureOptions`** — `{ reason, location, reserved_bytes }`; defaults: "Assinado digitalmente", "Portugal", 8192
+- **`PreparedPdf`** — `bytes_to_sign()`, `byte_range() -> (u64, u64, u64, u64)`, `embed_signature(pkcs7_der)`
+- **ByteRange placeholder** — `[0 1111111111 1222222222 1333333333]` (36 bytes, space-padded); patched in-place after render
+- **`SignatureConfig`** / **`SignatureField`** — higher-level config with visual field geometry; `DocumentBuilder::sign(config)` → `SigningBuilder`
+- **`sign_pdf(prepared, config, pkcs7_der)`** — public convenience function
+- **`tests/v230_signing.rs`** — signing test suite
+
+---
+
+## [2.2.0] — 2026-05-05
+
+### Added
+
+- **PDF/A-1b conformance** (`PdfStandard::PdfA1b`) — opt-in via `DocumentBuilder::standard(PdfStandard::PdfA1b)` or `.pdfa()` alias
+- **XMP metadata packet** — `build_xmp_pdfa(title, part)` emits `pdfaid:part` / `pdfaid:conformance=B`; embedded as `/Metadata` stream on the catalog
+- **sRGB ICC OutputIntent** — `srgb_icc_output_intent()` writes the sRGB v2 ICC profile as `/OutputIntent` (required by PDF/A)
+- **`PdfStandard::PdfA2b`** — ISO 19005-2; same XMP/sRGB path with `part=2`
+- **`DocumentBuilder::pdfa()`** kept as alias for `standard(PdfStandard::PdfA1b)`
+- **`tests/v200_compliance.rs`** — 44 compliance tests
+
+### Changed
+
+- `Document.pdfa: bool` replaced by `Document.standard: PdfStandard`
+
+---
+
+## [2.1.1] — 2026-05-01
+
+### Fixed
+
+- **PDF object ordering for Adobe Acrobat** — content streams and font objects now written in separate `Chunk`s; fixes "file does not begin with '%PDF-'" error in Acrobat when opening subsetted PDFs
+
+---
+
+## [2.1.0] — 2026-05-01
+
+### Added
+
+- **pdf-writer 0.12 backend** (Eixo A) — complete replacement of printpdf with pdf-writer (same backend as Typst); `PdfWriterBackend` implements `PdfBackend` trait; low-level Op-based content streams replaced by `Content` builder API
+- **Font subsetting** (Eixo B) — `subsetter 0.2.3` + `GlyphRemapper`; per-page glyph tracking via `GlyphUsageTracker`; `CIDToGIDMap` stream; `ToUnicode` CMap generated from BMP scan (U+0020–U+024F + punctuation); ~97% file size reduction
+- **`subset_font(bytes, used_glyphs)`** — public free function in `backend::pdf_writer_backend`
+- **`to_cff_if_possible(bytes)`** — extracts CFF table from OTF if present
+- **`generate_to_unicode_cmap(bytes, used_glyphs)`** — real reverse GID→Unicode CMap
+- **`PdfBackend` trait** — `embed_font`, `new_page`, `draw_text`, `draw_text_rotated`, `set_opacity`, `reset_opacity`, `begin_tagged_content`, `end_tagged_content`, `begin_artifact_content`, `write_structure_tree`, `finish`
+- **Eixo E (real ExtGState opacity)** — `set_opacity(f64)` / `reset_opacity()` use PDF ExtGState; `opacity_gs: HashMap<u8, Ref>` cache in backend; watermark uses real opacity instead of color simulation
+- **Eixo F (`TraceabilityMetadata`)** — `SecurityClassification { Public, Internal, Confidential, Reserved }`, `TraceabilityMetadata`; `DocumentBuilder::traceability(meta)`; auto-watermark when classification is non-Public
+- **NDT 2.0.0 `output` + `signature` fields** — `NdtOutput`, `NdtSignature`, `NdtSignatureField` in template model; `push_ndt()` wires `output.standard` → `PdfStandard`, `output.compression` → `CompressionLevel`, `output.classification` → `TraceabilityMetadata`
+- **`pub const PDF_BACKEND: &str = "pdf-writer"`** exported from `lib.rs`
+- **`examples/12_compliance.rs`** — PDF/A-1b + traceability + NDT 2.0 output
+- **379 tests**, 0 failures
+
+### Changed
+
+- `ENGINE_NDT_VERSION` bumped to `"2.0.0"`; version check accepts `template_major ≤ engine_major`
+
+---
+
+## [1.5.1] — 2026-04-30
+
+### Added
+
+- **`lopdf` compression pipeline** — post-processes the raw PDF bytes through lopdf's compression pass; reduces typical output from ~831 KB to ~280 KB (~66%)
+- **`ndt-tools pdf-inspect` subcommand** — inspects a PDF file and reports object count, page count, embedded fonts, and compression status
+
+---
+
+## [1.5.0] — 2026-04-30
+
+### Added
+
+- **Footnotes** — `FootnoteRef` inline node in NCRTF; `FootnoteAccumulator` collects refs per page and renders them in a ruled section at the bottom of each page
+- **TOC two-pass layout** — `collect_toc_entries_pass()` estimates section positions before the main render so the TOC has accurate page numbers
+- **AcroForm visual placeholders** — `SignaturePlaceholder` element draws a visible dashed rectangle for signature fields; written to `/AcroForm` in the catalog
+- **Nested tables** — `TableCell` content accepts another `Table` as a cell element
+- **Liberation Serif** and **Liberation Mono** embedded at compile time (joining Liberation Sans)
+- **`hyphenation` feature flag** — optional; embeds `hyphenation 0.8` with `embed_all` language data when enabled; plugs into `TextLayoutEngine`
+
+### Changed
+
+- `NDT_VERSION` bumped to `"1.5.0"`; `NCRTF_VERSION` bumped to `"1.2.0"`
+
+---
+
+## [1.4.1] — 2026-04-29
+
+### Added
+
+- **`compat_mode` in `NdtMeta`** — `Option<String>` field; when set to `"1.0"` the engine relaxes version checks for legacy templates
+
+### Fixed
+
+- **`dotx2ndt` phantom paragraph suppression** — trailing empty paragraphs generated by Word's style definitions no longer appear in the NDT skeleton output
+
+---
+
+## [1.4.0] — 2026-04-29
+
+### Added
+
+- **Knuth-Plass line breaking** — `TextLayoutEngine` upgraded from greedy wrapping to the full TeX Knuth-Plass algorithm via `rustybuzz 0.20`; better justification, fewer rivers
+- **`TextDecoration`** — per-run decorations: `Underline`, `Strikethrough`, `Highlight(color)`, `Superscript`, `Subscript`, `SmallCaps`; rendered in `draw_text` for all backends
+- **`ParagraphBorder`** — box or side borders around a `Paragraph` block; configurable line width, color, and padding
+- **`SectionBreak`** — flow element that forces a page break and optionally resets the page counter
+- **`ndt-tools` CLI v0.1.0** — standalone binary crate (`tools/ndt-tools`): `validate`, `render`, `inspect` subcommands
+
+### Changed
+
+- `rustybuzz` replaces ad-hoc glyph advance measurement; glyph metrics are now shaped correctly for complex scripts
+- `NDT_VERSION` bumped to `"1.4.0"`
+
+---
+
+## [1.3.1] — 2026-04-28
+
+### Added
+
+- **Libertinus Serif** embedded as the default body font (replaces Liberation Sans as default); Liberation Sans retained for UI / sans-serif use
+
+### Fixed
+
+- **Word-join bug with Portuguese characters** — `TextLayoutEngine` was splitting words at `ã`, `ç`, `é`, and other non-ASCII letters when measuring break opportunities; fixed by using Unicode word-boundary rules instead of ASCII whitespace detection
+
+---
+
 ## [1.3.0] — 2026-04-26
 
 ### Added
@@ -200,4 +387,3 @@ First stable release. API is considered stable from this version onwards.
 - `Paragraph`, `Section` (heading), `Spacer`, `PageBreak`, `HorizontalRule` flow elements
 - `DocumentStyle` with `PageSize`, `RgbColor`
 - printpdf 0.9 Op-based renderer
-
