@@ -89,6 +89,32 @@ impl Element for ImageElement {
     }
 
     fn render(&self, ctx: &mut RenderContext) -> crate::Result<super::RenderResult> {
+        if self.data.is_empty() {
+            ctx.flow.advance(self.estimated_height_mm());
+            return Ok(super::RenderResult::done());
+        }
+
+        let img = image::load_from_memory(&self.data)
+            .map_err(|e| crate::NormaxisPdfError::ImageLoadError(e.to_string()))?;
+        let (px_w, px_h) = (img.width() as f64, img.height() as f64);
+        let aspect = if px_w > 0.0 { px_h / px_w } else { 1.0 };
+
+        let content_w = ctx.layout.content_width_mm;
+        let render_w = if let Some(pct) = self.width_percent {
+            content_w * pct / 100.0
+        } else {
+            self.width_mm.unwrap_or(content_w)
+        };
+        let render_h = self.height_mm.unwrap_or(render_w * aspect);
+
+        let x_mm = match self.alignment {
+            ImageAlignment::Left => ctx.layout.content_x_mm,
+            ImageAlignment::Center => ctx.layout.content_x_mm + (content_w - render_w) / 2.0,
+            ImageAlignment::Right => ctx.layout.content_x_mm + content_w - render_w,
+        };
+        // y_mm is the bottom-left corner in PDF coords (bottom-origin)
+        let y_mm = ctx.flow.cursor_y_mm - render_h;
+
         if ctx.ua_enabled() {
             match &self.alt {
                 Some(alt_text) => {
@@ -107,13 +133,15 @@ impl Element for ImageElement {
             }
         }
 
-        // TODO: decode image with the `image` crate, determine aspect ratio,
-        // create image XObject, place at correct x/y with alignment offset
-        ctx.flow.advance(self.estimated_height_mm());
+        let img_ref = ctx.backend.embed_image(&self.data)?;
+        ctx.backend.draw_image(img_ref, x_mm, y_mm, render_w, render_h);
 
         if ctx.ua_enabled() {
             ctx.backend.end_tagged_content();
         }
+
+        let caption_h = if self.caption.is_some() { 5.0 } else { 0.0 };
+        ctx.flow.advance(render_h + caption_h);
 
         Ok(super::RenderResult::done())
     }
