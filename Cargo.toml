@@ -33,6 +33,8 @@ description = "Institutional PDF generation for Portuguese public administration
 repository = "https://github.com/carloscanutocosta/normordis-pdf"
 keywords = ["pdf", "institutional", "portugal", "public-admin", "normaxis"]
 categories = ["rendering", "template-engine"]
+readme = "README.md"
+documentation = "https://docs.rs/normordis-pdf"
 exclude = ["examples/templates/*.pdf"]
 
 [lib]
@@ -63,6 +65,7 @@ default = []
 optimal_wrap = []
 system-fonts = ["dep:fontdb"]
 hyphenation = ["dep:hyphenation"]
+ffi = []
 
 [dev-dependencies]
 tempfile.workspace = true

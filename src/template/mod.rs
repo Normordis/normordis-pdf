@@ -1,11 +1,13 @@
 pub mod data;
 pub mod model;
+pub mod registry;
 pub mod renderer;
 pub mod resolver;
 pub mod validator;
 
 pub use data::NdtData;
-pub use model::NdtDocument;
+pub use model::{NdtDocument, NdtTemplateRecord, NdtTemplateSummary, TemplateStatus};
+pub use registry::{NdtRegistry, TemplateFilter};
 pub use renderer::render_template;
 
 pub use ndf_pipeline::{

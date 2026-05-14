@@ -142,6 +142,28 @@ pub trait PdfBackend {
         _dest_title: &str,
         _dest_page_estimate: u32,
     ) {}
+
+    // ── Image XObjects ───────────────────────────────────────────────────────
+
+    /// Embed image bytes as a PDF XObject and return an opaque `ImageRef`.
+    ///
+    /// Accepts raw PNG or JPEG bytes. The image is decoded once; subsequent
+    /// [`draw_image`] calls reference the same XObject by `ImageRef`.
+    fn embed_image(&mut self, data: &[u8]) -> crate::Result<ImageRef>;
+
+    /// Place a previously embedded image on the current page.
+    ///
+    /// `(x_mm, y_mm)` is the bottom-left corner in PDF coordinates (mm,
+    /// bottom-left origin). `width_mm` × `height_mm` are the rendered
+    /// dimensions; aspect-ratio scaling is the caller's responsibility.
+    fn draw_image(
+        &mut self,
+        img_ref: ImageRef,
+        x_mm: f64,
+        y_mm: f64,
+        width_mm: f64,
+        height_mm: f64,
+    );
 }
 
 /// Opaque reference to an embedded font variant.

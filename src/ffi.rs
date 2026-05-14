@@ -3,6 +3,8 @@ use std::os::raw::c_char;
 use std::ptr;
 
 use crate::{DocumentBuilder, NormaxisPdfError};
+use crate::template::{parse_ndt, parse_ndt_data, render as render_ndt_template};
+use crate::styles::DocumentStyle;
 
 /// Gera um PDF a partir de um JSON de configuração.
 /// Exemplo de JSON:
@@ -53,6 +55,55 @@ pub struct PdfResult {
     pub data: *mut u8,
     pub len: usize,
     _owned: Vec<u8>, // Campo privado para gerenciar memória
+}
+
+/// Generate a PDF from an NDT template JSON + NdtData JSON.
+///
+/// `ndt_json` — UTF-8 NDT template (JSON or TOML).
+/// `data_json` — UTF-8 NdtData JSON (`{"ndt_data":"1.0.0","data":{...}}`).
+///
+/// Returns a `PdfResult` pointer on success, or null on error.
+/// The caller must free with `free_pdf_result`.
+#[unsafe(no_mangle)]
+pub extern "C" fn generate_pdf_from_ndt(
+    ndt_json: *const c_char,
+    data_json: *const c_char,
+) -> *mut PdfResult {
+    if ndt_json.is_null() || data_json.is_null() {
+        return ptr::null_mut();
+    }
+    let ndt_str = unsafe { CStr::from_ptr(ndt_json).to_string_lossy() };
+    let data_str = unsafe { CStr::from_ptr(data_json).to_string_lossy() };
+
+    let pdf_bytes = match create_pdf_from_ndt(&ndt_str, &data_str) {
+        Ok(bytes) => bytes,
+        Err(_) => return ptr::null_mut(),
+    };
+
+    let result = Box::new(PdfResult {
+        data: pdf_bytes.as_ptr() as *mut u8,
+        len: pdf_bytes.len(),
+        _owned: pdf_bytes,
+    });
+    Box::into_raw(result)
+}
+
+fn create_pdf_from_ndt(ndt_json: &str, data_json: &str) -> Result<Vec<u8>, NormaxisPdfError> {
+    let doc = parse_ndt(ndt_json)
+        .map_err(|e| NormaxisPdfError::Template(e.to_string()))?;
+    let data = parse_ndt_data(data_json)
+        .map_err(|e| NormaxisPdfError::Template(e.to_string()))?;
+
+    let title = doc.meta.as_ref().and_then(|m| m.title.as_deref()).unwrap_or("Document");
+    let style = DocumentStyle::default();
+    let elements = render_ndt_template(&doc, &data, &style)
+        .map_err(|e| NormaxisPdfError::Template(e.to_string()))?;
+
+    let mut builder = DocumentBuilder::new(title);
+    for el in elements {
+        builder = builder.push_boxed(el);
+    }
+    builder.render_to_bytes()
 }
 
 // Função interna para criar o PDF (adapta ao teu código real)

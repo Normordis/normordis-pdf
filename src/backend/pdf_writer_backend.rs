@@ -56,6 +56,16 @@ struct FontEntry {
     bbox: Rect,
 }
 
+/// An embedded image XObject.
+struct ImageEntry {
+    /// PDF resource name used in page /XObject dict ("Im0", "Im1", …).
+    name: String,
+    /// Allocated Ref for the image XObject stream.
+    xobj_ref: Ref,
+    width_px: u32,
+    height_px: u32,
+}
+
 /// A heading recorded for inclusion in the PDF /Outlines (bookmarks) tree.
 struct OutlineEntry {
     title:    String,
@@ -139,6 +149,10 @@ pub struct PdfWriterBackend {
     ua_lang: String,
     /// When true, finish() emits PDF 2.0 header + pdfuaid XMP + trailer ID.
     pdfu2: bool,
+    /// Embedded image XObjects (written to pages_chunk in embed_image).
+    images: Vec<ImageEntry>,
+    /// Image indices (into `images`) referenced on the page being built.
+    current_page_images: HashSet<u32>,
     /// Section headings collected during rendering for the /Outlines tree.
     outlines: Vec<OutlineEntry>,
     /// Link annotations accumulated for the page currently being rendered.
@@ -254,6 +268,8 @@ impl PdfWriterBackend {
             signature: None,
             page1_ref: None,
             opacity_gs: HashMap::new(),
+            images: Vec::new(),
+            current_page_images: HashSet::new(),
             struct_tree_root_ref: None,
             ua_lang: String::new(),
             pdfu2: false,
@@ -458,9 +474,22 @@ impl PdfWriterBackend {
                     gsdict.pair(Name(name.as_bytes()), gs_ref);
                 }
             }
+            if !self.current_page_images.is_empty() {
+                let image_pairs: Vec<(String, Ref)> = self.current_page_images.iter()
+                    .map(|&idx| {
+                        let e = &self.images[idx as usize];
+                        (e.name.clone(), e.xobj_ref)
+                    })
+                    .collect();
+                let mut xdict = res.x_objects();
+                for (name, xref) in &image_pairs {
+                    xdict.pair(Name(name.as_bytes()), *xref);
+                }
+            }
         }
 
         self.current_page_fonts.clear();
+        self.current_page_images.clear();
 
         // Move pending links to the deferred list now that the page dict is sealed.
         for (link, aref) in pending_links.into_iter().zip(link_refs.into_iter()) {
@@ -1206,6 +1235,60 @@ impl PdfBackend for PdfWriterBackend {
             dest_title: dest_title.to_string(),
             dest_page_estimate,
         });
+    }
+
+    fn embed_image(&mut self, data: &[u8]) -> crate::Result<super::ImageRef> {
+        let idx = self.images.len() as u32;
+        let name = format!("Im{idx}");
+        let xobj_ref = self.alloc.bump();
+
+        let img = image::load_from_memory(data)
+            .map_err(|e| crate::NormaxisPdfError::ImageLoadError(e.to_string()))?;
+        let (width_px, height_px) = (img.width(), img.height());
+
+        // JPEG can be embedded verbatim with DCTDecode.
+        // Everything else is decoded to RGB8 and stored with FlateDecode.
+        let is_jpeg = data.starts_with(b"\xFF\xD8\xFF");
+        if is_jpeg {
+            let mut xobj = self.pages_chunk.image_xobject(xobj_ref, data);
+            xobj.filter(Filter::DctDecode);
+            xobj.width(width_px as i32);
+            xobj.height(height_px as i32);
+            xobj.color_space().device_rgb();
+            xobj.bits_per_component(8);
+        } else {
+            let raw: Vec<u8> = img.to_rgb8().into_raw();
+            let compressed = self.compress(&raw)?;
+            let mut xobj = self.pages_chunk.image_xobject(xobj_ref, &compressed);
+            xobj.filter(Filter::FlateDecode);
+            xobj.width(width_px as i32);
+            xobj.height(height_px as i32);
+            xobj.color_space().device_rgb();
+            xobj.bits_per_component(8);
+        }
+
+        self.images.push(ImageEntry { name, xobj_ref, width_px, height_px });
+        Ok(super::ImageRef(idx))
+    }
+
+    fn draw_image(
+        &mut self,
+        img_ref: super::ImageRef,
+        x_mm: f64,
+        y_mm: f64,
+        width_mm: f64,
+        height_mm: f64,
+    ) {
+        let name = self.images[img_ref.0 as usize].name.clone();
+        let x_pt = mm_to_pt(x_mm);
+        let y_pt = mm_to_pt(y_mm);
+        let w_pt = mm_to_pt(width_mm);
+        let h_pt = mm_to_pt(height_mm);
+        self.current_page_images.insert(img_ref.0);
+        self.content.save_state();
+        self.content.transform([w_pt, 0.0, 0.0, h_pt, x_pt, y_pt]);
+        self.content.x_object(Name(name.as_bytes()));
+        self.content.restore_state();
     }
 
     fn write_structure_tree(

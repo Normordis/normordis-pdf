@@ -66,6 +66,7 @@ pub mod template;
 pub mod signing;
 pub mod ndf;
 pub mod compliance;
+#[cfg(feature = "ffi")]
 pub mod ffi;
 
 // ── Error handling ────────────────────────────────────────────────────────────
@@ -162,6 +163,12 @@ pub use template::{
 // ── NDT 2.0.0 types ───────────────────────────────────────────────────────────
 
 pub use template::model::{NdtOutput, NdtSignature, NdtSignatureField};
+
+// ── NDT template registry ────────────────────────────────────────────────────
+
+pub use template::{
+    NdtRegistry, NdtTemplateRecord, NdtTemplateSummary, TemplateFilter, TemplateStatus,
+};
 
 // ── NDF pipeline ─────────────────────────────────────────────────────────────
 

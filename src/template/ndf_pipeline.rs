@@ -190,11 +190,8 @@ pub fn render_ndf(ndf_json: &str) -> Result<Vec<u8>> {
         id: None,
         meta: Some(super::model::NdtMeta {
             title: Some(ndf.meta.title.clone()),
-            description: None,
-            author: None,
-            version: None,
-            created_at: None,
             compat_mode: ndf.meta.compat_mode,
+            ..Default::default()
         }),
         style: serde_json::from_value(ndf.styles.clone()).ok(),
         fonts: None,
@@ -254,11 +251,8 @@ pub fn render_ndf_prepared_for_signing(
         id: None,
         meta: Some(super::model::NdtMeta {
             title: Some(ndf.meta.title.clone()),
-            description: None,
-            author: None,
-            version: None,
-            created_at: None,
             compat_mode: ndf.meta.compat_mode,
+            ..Default::default()
         }),
         style: serde_json::from_value(ndf.styles.clone()).ok(),
         fonts: None,

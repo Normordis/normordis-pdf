@@ -1,3 +1,4 @@
+use base64::Engine as _;
 use serde_json::Value;
 
 use super::{
@@ -11,7 +12,7 @@ use crate::{
         fixed_image::{FixedImageBox, ImageFit},
         fixed_line::FixedLineElement as FixedLine,
         fixed_text::{FixedTextBox, VerticalAlign},
-        image::ImageElement,
+        image::{ImageAlignment, ImageElement},
         list::{BulletList, ListItemElement, OrderedList},
         page_break::PageBreakElement,
         paragraph::{Paragraph, ParagraphContent, TextRun},
@@ -24,6 +25,23 @@ use crate::{
     richtext::{self},
     styles::{DocumentStyle, RgbColor},
 };
+
+/// Resolve a template src string to raw image bytes.
+///
+/// Handles `{{placeholder}}` expansion followed by data-URL decoding:
+/// `data:image/<fmt>;base64,<base64>` → decoded bytes.
+fn resolve_image_src(src: &str, data: &NdtData) -> Vec<u8> {
+    let resolved = resolver::resolve_string(src, data);
+    let s = resolved.trim();
+    if let Some(rest) = s.strip_prefix("data:image/") {
+        if let Some(b64) = rest.splitn(2, ";base64,").nth(1) {
+            return base64::engine::general_purpose::STANDARD
+                .decode(b64.trim())
+                .unwrap_or_default();
+        }
+    }
+    Vec::new()
+}
 
 /// Convert an `NdtDocument` + `NdtData` into a flat list of renderable elements.
 pub fn render_template(
@@ -127,9 +145,21 @@ fn render_body(
                 }
             }
 
-            BodyElement::Image(_img) => {
-                // TODO: decode base64/asset src
-                elements.push(Box::new(ImageElement::new(vec![])));
+            BodyElement::Image(img) => {
+                let bytes = resolve_image_src(&img.src, data);
+                let mut el = ImageElement::new(bytes);
+                if let Some(pct) = img.width_percent {
+                    el.width_percent = Some(pct);
+                }
+                if let Some(ref cap) = img.caption {
+                    el = el.caption(resolver::resolve_string(cap, data));
+                }
+                el.alignment = match img.alignment.as_deref() {
+                    Some("left") => ImageAlignment::Left,
+                    Some("right") => ImageAlignment::Right,
+                    _ => ImageAlignment::Center,
+                };
+                elements.push(Box::new(el));
             }
 
             BodyElement::Spacer(s) => {
@@ -170,6 +200,13 @@ fn render_body(
             }
 
             BodyElement::FixedImage(fi) => {
+                let bytes = resolve_image_src(&fi.src, data);
+                let fit = match fi.fit.as_deref() {
+                    Some("cover") => ImageFit::Cover,
+                    Some("stretch") => ImageFit::Stretch,
+                    Some("original") => ImageFit::Original,
+                    _ => ImageFit::Contain,
+                };
                 elements.push(Box::new(FixedImageBox {
                     image_box: FixedBox {
                         x_mm: fi.x_mm,
@@ -184,8 +221,8 @@ fn render_body(
                         ua_role: None,
                         ua_alt: None,
                     },
-                    data: vec![], // TODO: decode src
-                    fit: ImageFit::Contain,
+                    data: bytes,
+                    fit,
                 }));
             }
 
