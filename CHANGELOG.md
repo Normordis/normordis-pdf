@@ -6,17 +6,37 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) — versions fo
 
 ---
 
-## [Unreleased] — 2026-05-09
+## [Unreleased] — 2026-05-14
 
 ### Added
 
 - **PDF bookmarks / document outline** — `Outline` / `OutlineItem` structs; `DocumentBuilder::outline()` builder; PDF `/Outlines` dict written in `finish()`; headings auto-registered when `outline_headings: true`
 - **TOC clickable GoTo links** — TOC entries rendered as `/Link` annotations with `/GoTo` destinations pointing to the target page; `TocEntry::dest_ref` field
 - **`InstitutionalHeader::render()`** — standardised institutional page header element with logo slot, entity name, and document reference line
+- **`FontFallbackChain`** — new struct (`fonts: Vec<String>`) added to `DocumentStyle.font_fallback`; when the requested font family is not registered the engine walks the chain and uses the first registered name; falls back to the document default if none resolve; emits `eprintln!` warning (never an error)
+- **`FontData::from_file(path)`** — standalone constructor that reads a TTF/OTF from disk and validates with `ttf_parser`
+- **`FontRegistry::register_file(name, regular, bold?, italic?, bold_italic?)`** — register a font family from file paths into an existing registry
+- **`FontRegistry::register_bytes(name, regular, bold?, italic?, bold_italic?)`** — register a font family from `&[u8]` slices
+- **`FontRegistry::register_single(name, path)`** / **`register_single_bytes(name, bytes)`** — single-variant shorthand (no bold/italic; falls back to regular)
+- **`FontRegistry::try_resolve(name, depth)`** — recursive alias resolution with cycle protection (max 8 hops); returns `Option<&FontVariants>`
+- **`FontRegistry::resolve(name)`** — same as `try_resolve` but never returns `None` (falls back to default)
+- **`FontRegistry::contains(name)`** — returns `true` if the name is registered directly or via alias
+- **`FontRegistry::registered_families()`** — returns `Vec<&str>` of all directly registered family names
+- **`FontRegistry::load_dir(dir)`** — scans a directory for TTF/OTF files, groups them into families by variant suffix (`-Regular`, `-Bold`, `-Italic`, `-BoldItalic`), and adds them to the existing registry; returns the count of families added
+- **`TextLayoutEngine::default_family_name()`** / **`set_default_family(name)`** — accessors for the engine's current default family; used internally by `Paragraph` for per-paragraph font override
+- **`Paragraph::font_family(name)`** — per-paragraph font family override; takes precedence over the named style's `font_family`; the layout engine temporarily uses the resolved family for correct glyph metrics
+- **`DocumentBuilder::font_from_file(name, regular, bold?, italic?, bold_italic?)`** — fluent builder method for registering fonts from disk
+- **`DocumentBuilder::font_from_bytes(name, regular, bold?, italic?, bold_italic?)`** — fluent builder method for registering fonts from byte slices
+- **`DocumentBuilder::fonts_from_dir(dir)`** — fluent builder method that calls `FontRegistry::load_dir`
+- **`DocumentBuilder::default_font(name)`** — fluent builder method that sets the document default font family
+- **`examples/14_custom_fonts.rs`** — demonstrates `font_from_bytes`, per-paragraph `.font_family()`, and automatic fallback to the fallback chain
+- **`examples/15_fonts_from_dir.rs`** — demonstrates `fonts_from_dir` and Word font name aliases
+- **`tests/custom_fonts.rs`** — 25 integration tests covering all new font API surface
 
 ### Changed
 
 - **Crate renamed** from `normaxis-pdf` to `normordis-pdf`; package, Rust crate name (`normordis_pdf`), and all `use` paths updated across the workspace
+- **`DocumentStyle`** gains `font_fallback: FontFallbackChain` field (serde default: `["LiberationSans", "LiberationSerif", "LiberationMono"]`); backwards-compatible via `#[serde(default)]`
 
 ### Fixed
 

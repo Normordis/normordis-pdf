@@ -101,6 +101,19 @@ impl TextLayoutEngine {
         fonts.measure_text_mm(text, &self.default_family, font_size, bold, italic)
     }
 
+    /// Returns the default font family name used for measurement.
+    pub fn default_family_name(&self) -> &str {
+        &self.default_family
+    }
+
+    /// Overrides the default font family used for measurement.
+    ///
+    /// Used by `Paragraph` to apply a per-paragraph font family.
+    /// Always restore with the previous value after the layout call.
+    pub fn set_default_family(&mut self, name: impl Into<String>) {
+        self.default_family = name.into();
+    }
+
     /// Returns the line height in mm for `font_size` (pt).
     pub fn line_height_mm(&self, fonts: &FontRegistry, font_size: f64) -> f64 {
         fonts.get_default().line_height_mm(font_size, self.line_height)

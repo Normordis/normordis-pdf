@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     error::NormaxisPdfError,
+    fonts::FontFallbackChain,
     layout::TextAlign,
 };
 
@@ -94,10 +95,17 @@ pub struct DocumentStyle {
     /// after a page break (widow control). 0 = disabled. Default: 2.
     #[serde(default = "default_widow_lines")]
     pub min_widow_lines: u8,
+    /// Font fallback chain used when the requested font family is not registered.
+    /// The first registered name in the chain wins; then the document default.
+    #[serde(default = "default_fallback_chain")]
+    pub font_fallback: FontFallbackChain,
 }
 
 fn default_orphan_lines() -> u8 { 2 }
 fn default_widow_lines() -> u8 { 2 }
+fn default_fallback_chain() -> FontFallbackChain {
+    FontFallbackChain::new(vec!["LiberationSans", "LiberationSerif", "LiberationMono"])
+}
 
 impl Default for DocumentStyle {
     fn default() -> Self {
@@ -120,6 +128,7 @@ impl Default for DocumentStyle {
             named_styles: HashMap::new(),
             min_orphan_lines: 2,
             min_widow_lines: 2,
+            font_fallback: default_fallback_chain(),
         }
     }
 }

@@ -1,17 +1,13 @@
 # normordis-pdf — Developer Guide
 
-This repository is bilingual, with the main programming guide currently available in Portuguese in `MANUAL.md`.
-
-## English guide status
-
-A complete English version of the manual is under construction. For now, please use the Portuguese manual at `MANUAL.md` and refer to `README.md` for bilingual project documentation.
+This repository is bilingual. The authoritative programming reference is `MANUAL.md` (Portuguese). This file covers the most commonly asked topics in English.
 
 ## Quick start
 
 ```toml
 # Cargo.toml
 [dependencies]
-normordis-pdf = "1.0.0"
+normordis-pdf = "2.4.0"
 ```
 
 ```rust
@@ -26,11 +22,115 @@ let pdf = DocumentBuilder::new("Monthly Report")
 std::fs::write("output.pdf", pdf)?;
 ```
 
+## Fonts
+
+### Embedded families
+
+Four font families ship pre-compiled into the crate binary — no system fonts or external files needed:
+
+| Name | Word equivalent | Typical use |
+|---|---|---|
+| `LiberationSans` | Arial / Calibri / Helvetica | Body text (default) |
+| `LiberationSerif` | Times New Roman / Cambria | Formal serif body |
+| `LiberationMono` | Courier New / Consolas | Code, references |
+| `LibertinusSerif` | — | Alternative serif body |
+
+Common Word font names are pre-registered as aliases:  
+`Arial`, `Calibri`, `Helvetica` → `LiberationSans`  
+`Times New Roman`, `Cambria`, `Georgia` → `LiberationSerif`  
+`Courier New`, `Consolas` → `LiberationMono`
+
+### Loading custom fonts
+
+Register any TTF/OTF font via the `DocumentBuilder` fluent API:
+
+```rust
+use normordis_pdf::{DocumentBuilder, Paragraph};
+
+// From bytes (e.g. include_bytes! for bundled fonts)
+let pdf = DocumentBuilder::new("Document")
+    .font_from_bytes(
+        "GilSans",
+        include_bytes!("assets/GilSans-Regular.ttf"),
+        Some(include_bytes!("assets/GilSans-Bold.ttf")),
+        None, None,
+    )?
+    .push(Paragraph::new("Text in GilSans.").font_family("GilSans"))
+    .render_to_bytes()?;
+
+// From files on disk
+let pdf = DocumentBuilder::new("Document")
+    .font_from_file(
+        "FiraCode",
+        "assets/FiraCode-Regular.ttf",
+        None::<&str>, None::<&str>, None::<&str>,
+    )?
+    .render_to_bytes()?;
+
+// Scan a whole directory
+let pdf = DocumentBuilder::new("Document")
+    .fonts_from_dir("assets/fonts/")?
+    .render_to_bytes()?;
+
+// Change the default font
+let pdf = DocumentBuilder::new("Document")
+    .default_font("LiberationSerif")?
+    .render_to_bytes()?;
+```
+
+### Per-paragraph font override
+
+```rust
+use normordis_pdf::Paragraph;
+
+Paragraph::new("Serif paragraph.").font_family("LiberationSerif")
+Paragraph::new("Mono paragraph.").font_family("LiberationMono")
+// Unknown name → fallback chain → warning on stderr, never an error
+Paragraph::new("Fallback paragraph.").font_family("UnknownFont")
+```
+
+### `FontRegistry` direct manipulation
+
+```rust
+use normordis_pdf::FontRegistry;
+
+let mut reg = FontRegistry::default();
+
+reg.register_bytes("Crimson", include_bytes!("Crimson-Regular.ttf"), None, None, None)?;
+reg.register_file("Montserrat", "Montserrat-Regular.ttf", None::<&str>, None::<&str>, None::<&str>)?;
+reg.register_single("Icons", "icons.ttf")?;
+let n = reg.load_dir("assets/fonts/")?;   // groups by -Bold / -Italic suffix
+reg.add_alias("Helvetica Neue", "Montserrat");
+```
+
+### Font fallback chain
+
+When a requested font is not registered, the engine tries the fallback chain in order. Defaults to `["LiberationSans", "LiberationSerif", "LiberationMono"]`.
+
+```rust
+use normordis_pdf::{DocumentStyle, FontFallbackChain};
+
+let mut style = DocumentStyle::default();
+style.font_fallback = FontFallbackChain::new(vec!["Crimson", "LiberationSans"]);
+```
+
+### System fonts (optional feature)
+
+```toml
+normordis-pdf = { version = "...", features = ["system-fonts"] }
+```
+
+```rust
+#[cfg(feature = "system-fonts")]
+let reg = normordis_pdf::FontRegistry::from_system()?;
+```
+
 ## Project structure
 
 - `Cargo.toml` — crate manifest and workspace definition
 - `src/` — core library implementation
-- `examples/` — sample renderers using the crate API
-- `tools/` — helper CLIs such as `dotx2ndt` and `ndt-tools`
-- `MANUAL.md` — detailed developer guide in Portuguese
+- `examples/` — runnable examples (`cargo run --example <name>`)
+- `tools/` — helper CLIs: `dotx2ndt`, `ndt-tools`
+- `MANUAL.md` — full developer guide (Portuguese)
 - `README.md` — bilingual project introduction and quick start
+- `CHANGELOG.md` — version history

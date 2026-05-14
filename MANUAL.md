@@ -8,7 +8,7 @@
 4. [Elementos de fluxo](#4-elementos-de-fluxo)
 5. [Elementos fixos](#5-elementos-fixos)
 6. [Formato NCRTF](#6-formato-ncrtf)
-7. [Fontes](#7-fontes)
+7. [Fontes](#7-fontes) — embebidas, `register_bytes`, `register_file`, `load_dir`, fallback chain
 8. [Tratamento de erros](#8-tratamento-de-erros)
 9. [Implementar um elemento personalizado](#9-implementar-um-elemento-personalizado)
 10. [Sistema de coordenadas](#10-sistema-de-coordenadas)
@@ -72,10 +72,15 @@ let bytes = DocumentBuilder::new("Título do Documento")
 | `new(title)` | Cria um builder com o título do PDF |
 | `style(DocumentStyle)` | Define o estilo global (margens, tamanhos de fonte, cores) |
 | `fonts(FontRegistry)` | Fornece um registo de fontes pré-carregadas |
+| `font_from_bytes(name, regular, bold?, italic?, bold_italic?)` | Regista uma família de fontes a partir de bytes `&[u8]` |
+| `font_from_file(name, regular, bold?, italic?, bold_italic?)` | Regista uma família de fontes a partir de ficheiros TTF/OTF |
+| `fonts_from_dir(dir)` | Carrega todas as fontes TTF/OTF de um directório |
+| `default_font(name)` | Define a família de fontes por omissão do documento |
 | `header(InstitutionalHeader)` | Cabeçalho institucional re-injectado em cada página |
 | `footer(PageFooter)` | Rodapé em cada página |
 | `push(element)` | Adiciona qualquer elemento de fluxo ao corpo |
 | `push_ncrtf(json)` | Parseia JSON NCRTF e adiciona todos os blocos resultantes |
+| `push_ndt(template, data)` | Parseia um template NDT e adiciona todos os elementos resultantes |
 | `fixed_text(box_def, content, alignment)` | Caixa de texto em posição fixa |
 | `fixed_image(box_def, data, fit)` | Imagem em posição fixa |
 | `fixed_line(x1, y1, x2, y2, color)` | Linha decorativa em posição fixa |
@@ -177,8 +182,12 @@ Paragraph::from_runs(
 | `Paragraph::from_runs(runs, alignment, font_size)` | A partir de runs formatados |
 | `.bold()` | Activa negrito (só para `Plain`) |
 | `.italic()` | Activa itálico (só para `Plain`) |
-| `.align(TextAlignment)` | Define o alinhamento |
+| `.align(TextAlign)` | Define o alinhamento |
 | `.font_size(f64)` | Tamanho de fonte em pontos |
+| `.font_family(name)` | Substitui a família de fontes para este parágrafo |
+| `.style(name)` | Aplica um estilo nomeado |
+| `.space_before(mm)` / `.space_after(mm)` | Espaçamento explícito em mm |
+| `.indent_left(mm)` / `.indent_right(mm)` / `.indent_first_line(mm)` | Indentação |
 
 ---
 
@@ -634,36 +643,183 @@ let elements = ncrtf_to_elements(&doc, &DocumentStyle::default());
 
 ## 7. Fontes
 
-A integração real de fontes está pendente. O `TextLayoutEngine` usa uma aproximação de medição baseada no número de caracteres:
+### Fontes embebidas
 
-```
-largura_mm ≈ n_caracteres × font_size × 0.5 × (25.4 / 72)
-```
+Quatro famílias estão embebidas em tempo de compilação via `include_bytes!` — nenhuma dependência de sistema é necessária:
 
-Esta aproximação sub-estima ligeiramente a largura real, o que é preferível a exceder (o texto pode ficar ligeiramente mais curto mas não sai fora da margem).
+| Nome | Equivalente Word | Uso típico |
+|---|---|---|
+| `LiberationSans` | Arial / Calibri / Helvetica | Corpo padrão (default) |
+| `LiberationSerif` | Times New Roman / Cambria / Georgia | Texto formal com serifa |
+| `LiberationMono` | Courier New / Consolas | Código, referências |
+| `LibertinusSerif` | — | Corpo com serifa alternativa |
 
-Quando as fontes forem embebidas:
+Aliases Word pré-configurados: `Arial`, `Calibri`, `Helvetica` → `LiberationSans`; `Times New Roman`, `Cambria`, `Georgia` → `LiberationSerif`; `Courier New`, `Consolas` → `LiberationMono`.
 
-1. Registar uma `FontFamily` com os bytes TTF/OTF:
+### Registar fontes via `DocumentBuilder`
+
+O método mais simples — regista diretamente no builder sem criar um `FontRegistry` manual:
 
 ```rust
-use normordis_pdf::{FontFamily, FontRegistry};
+use normordis_pdf::{DocumentBuilder, Paragraph};
 
-let mut registry = FontRegistry::new();
-registry.register(
-    FontFamily::new("Inter")
-        .with_regular(include_bytes!("../assets/Inter-Regular.ttf").to_vec())
-        .with_bold(include_bytes!("../assets/Inter-Bold.ttf").to_vec())
-        .with_italic(include_bytes!("../assets/Inter-Italic.ttf").to_vec())
-);
+// A partir de bytes em memória (e.g. include_bytes!)
+let pdf = DocumentBuilder::new("Documento")
+    .font_from_bytes(
+        "GilSans",
+        include_bytes!("assets/GilSans-Regular.ttf"),
+        Some(include_bytes!("assets/GilSans-Bold.ttf")),
+        Some(include_bytes!("assets/GilSans-Italic.ttf")),
+        None, // sem Bold Italic
+    )?
+    .push(Paragraph::new("Texto em GilSans.").font_family("GilSans"))
+    .render_to_bytes()?;
 
-let pdf = DocumentBuilder::new("Doc")
-    .fonts(registry)
-    .push(Paragraph::new("texto"))
+// A partir de ficheiros em disco
+let pdf = DocumentBuilder::new("Documento")
+    .font_from_file(
+        "FiraCode",
+        "assets/FiraCode-Regular.ttf",
+        None::<&str>, None::<&str>, None::<&str>,
+    )?
+    .push(Paragraph::new("Código em FiraCode.").font_family("FiraCode"))
+    .render_to_bytes()?;
+
+// Carregar todas as fontes de um directório
+let pdf = DocumentBuilder::new("Documento")
+    .fonts_from_dir("assets/fonts/")?
+    .render_to_bytes()?;
+
+// Alterar a fonte por omissão
+let pdf = DocumentBuilder::new("Documento")
+    .default_font("LiberationSerif")?
+    .push(Paragraph::new("Serif por omissão."))
     .render_to_bytes()?;
 ```
 
-2. `FontFamily::resolve_bytes(bold, italic)` devolve `Option<&[u8]>` com a variante mais próxima disponível (fallback automático para Regular).
+### Registar fontes via `FontRegistry`
+
+Para cenários mais avançados (registar fontes antes de criar o builder, partilhar um registo entre documentos):
+
+```rust
+use normordis_pdf::{FontRegistry, DocumentBuilder, Paragraph};
+
+let mut reg = FontRegistry::default(); // inclui as quatro famílias Liberation
+
+// register_bytes — aceita &[u8]
+reg.register_bytes(
+    "Crimson",
+    include_bytes!("assets/Crimson-Regular.ttf"),
+    Some(include_bytes!("assets/Crimson-Bold.ttf")),
+    None, None,
+)?;
+
+// register_file — aceita caminhos no sistema de ficheiros
+reg.register_file(
+    "Montserrat",
+    "assets/Montserrat-Regular.ttf",
+    Some("assets/Montserrat-Bold.ttf"),
+    None::<&str>, None::<&str>,
+)?;
+
+// register_single — variante única sem bold/italic (fontes de ícones, display, etc.)
+reg.register_single("Icons", "assets/icons.ttf")?;
+
+// Carregar um directório inteiro (agrupa por sufixo: -Regular, -Bold, -Italic, -BoldItalic)
+let count = reg.load_dir("assets/fonts/")?;
+println!("Carregadas {count} famílias");
+
+// Aliases personalizados
+reg.add_alias("Helvetica Neue", "Montserrat");
+
+let pdf = DocumentBuilder::new("Documento")
+    .fonts(reg)
+    .push(Paragraph::new("Serif.").font_family("Crimson"))
+    .render_to_bytes()?;
+```
+
+### `FontRegistry` — referência rápida
+
+| Método | Descrição |
+|---|---|
+| `FontRegistry::default()` | Cria com as quatro famílias Liberation embebidas |
+| `FontRegistry::empty()` | Cria sem nenhuma fonte registada |
+| `register_bytes(name, regular, bold?, italic?, bold_italic?)` | A partir de `&[u8]` |
+| `register_file(name, regular, bold?, italic?, bold_italic?)` | A partir de caminhos TTF/OTF |
+| `register_single(name, path)` / `register_single_bytes(name, bytes)` | Variante única |
+| `register(FontVariants)` | Regista diretamente um `FontVariants` já construído |
+| `load_dir(dir)` | Adiciona famílias de um directório; devolve `usize` (nº de famílias) |
+| `add_alias(alias, target)` | Ex.: `"Helvetica"` → `"LiberationSans"` |
+| `set_default(name)` | Define a família usada quando não há `font_family` explícito |
+| `get_family(name)` | Resolve nome (incluindo aliases); nunca devolve `None` |
+| `try_resolve(name, depth)` | Resolução com proteção de ciclos (máx. 8 saltos); `Option` |
+| `resolve(name)` | Como `try_resolve` mas nunca `None` |
+| `contains(name)` | `true` se o nome está registado direta ou por alias |
+| `registered_families()` | `Vec<&str>` com todos os nomes directamente registados |
+
+### Fonte por parágrafo
+
+Qualquer parágrafo pode substituir a fonte do estilo nomeado ou a fonte por omissão:
+
+```rust
+use normordis_pdf::Paragraph;
+
+Paragraph::new("Texto serifado.").font_family("LiberationSerif")
+Paragraph::new("Monospace.").font_family("LiberationMono")
+Paragraph::new("Fonte customizada.").font_family("GilSans")
+// Se "GilSans" não estiver registada, usa a cadeia de fallback e emite warning
+```
+
+O override de `font_family` também funciona com NDT através do campo `font_family` nos estilos nomeados:
+
+```toml
+# template.ndt.toml
+[styles.corpo_serifado]
+extends     = "normal"
+font_family = "LiberationSerif"
+font_size   = 11.0
+```
+
+### Cadeia de fallback (`FontFallbackChain`)
+
+Quando a fonte pedida não está registada, o engine percorre a cadeia de fallback em sequência e usa a primeira que encontrar. Se nenhuma estiver disponível, usa a fonte por omissão do documento. Um `eprintln!` de aviso é emitido — nunca é devolvido um erro.
+
+```rust
+use normordis_pdf::{DocumentStyle, FontFallbackChain};
+
+let mut style = DocumentStyle::default();
+// Por omissão: ["LiberationSans", "LiberationSerif", "LiberationMono"]
+// Personalizar:
+style.font_fallback = FontFallbackChain::new(vec![
+    "Crimson",        // serif registada
+    "LiberationSans", // fallback final
+]);
+```
+
+A cadeia é serializável/desserializável (Serde) e pode ser definida num template NDT:
+
+```json
+{
+  "font_fallback": { "fonts": ["LiberationSerif", "LiberationSans"] }
+}
+```
+
+### Fontes do sistema (`feature = "system-fonts"`)
+
+Com a feature `system-fonts` activa, é possível descobrir fontes instaladas no sistema operativo. **Não recomendado para produção** (resultados dependem do SO):
+
+```toml
+# Cargo.toml
+normordis-pdf = { version = "...", features = ["system-fonts"] }
+```
+
+```rust
+#[cfg(feature = "system-fonts")]
+{
+    let reg = FontRegistry::from_system()?;
+    // "Calibri", "Segoe UI", etc. ficam disponíveis se instaladas
+}
+```
 
 ---
 

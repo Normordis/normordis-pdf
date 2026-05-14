@@ -1,7 +1,27 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use serde::{Deserialize, Serialize};
+
 use crate::{NormaxisPdfError, Result};
+
+// ── FontFallbackChain ─────────────────────────────────────────────────────────
+
+/// Font fallback chain for missing glyphs or unregistered font names.
+///
+/// When the primary font for a paragraph is not registered, the engine tries
+/// each name in `fonts` in order.  The first registered one wins.
+/// If none resolve, the document default is used.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FontFallbackChain {
+    pub fonts: Vec<String>,
+}
+
+impl FontFallbackChain {
+    pub fn new(fonts: Vec<&str>) -> Self {
+        Self { fonts: fonts.into_iter().map(|s| s.to_string()).collect() }
+    }
+}
 
 // Libertinus Serif — kept for backward compatibility.
 const LIBERTINUS_SERIF_REGULAR: &[u8] =
@@ -69,6 +89,12 @@ pub struct FontData {
 }
 
 impl FontData {
+    /// Load a font from a TTF/OTF file on disk.
+    pub fn from_file(path: &Path) -> Result<Self> {
+        let bytes = std::fs::read(path).map_err(NormaxisPdfError::IoError)?;
+        Self::from_bytes(bytes)
+    }
+
     /// Parse a font from raw bytes (e.g., `include_bytes!`).
     pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
         let face = ttf_parser::Face::parse(&bytes, 0)
@@ -376,6 +402,165 @@ impl FontRegistry {
     ) -> f64 {
         self.get_family(family).measure_text_mm(text, font_size, bold, italic)
     }
+
+    // ── v2.1.3 additions ─────────────────────────────────────────────────────
+
+    /// Registers a font family from TTF/OTF files on disk.
+    ///
+    /// Only `regular_path` is required; bold/italic/bold_italic are optional.
+    /// Missing variants fall back to regular at render time.
+    pub fn register_file(
+        &mut self,
+        name: &str,
+        regular_path: impl AsRef<Path>,
+        bold_path: Option<impl AsRef<Path>>,
+        italic_path: Option<impl AsRef<Path>>,
+        bold_italic_path: Option<impl AsRef<Path>>,
+    ) -> Result<()> {
+        let family = FontVariants::from_files(
+            name,
+            regular_path.as_ref(),
+            bold_path.as_ref().map(|p| p.as_ref()),
+            italic_path.as_ref().map(|p| p.as_ref()),
+            bold_italic_path.as_ref().map(|p| p.as_ref()),
+        )?;
+        self.register(family);
+        Ok(())
+    }
+
+    /// Registers a font family from byte slices already in memory.
+    ///
+    /// Useful for fonts loaded from a database or network source.
+    pub fn register_bytes(
+        &mut self,
+        name: &str,
+        regular: &[u8],
+        bold: Option<&[u8]>,
+        italic: Option<&[u8]>,
+        bold_italic: Option<&[u8]>,
+    ) -> Result<()> {
+        let family = FontVariants::from_bytes(
+            name,
+            regular.to_vec(),
+            bold.map(|b| b.to_vec()),
+            italic.map(|b| b.to_vec()),
+            bold_italic.map(|b| b.to_vec()),
+        )?;
+        self.register(family);
+        Ok(())
+    }
+
+    /// Registers a single font file without bold/italic variants.
+    pub fn register_single(&mut self, name: &str, path: impl AsRef<Path>) -> Result<()> {
+        self.register_file(name, path, None::<&Path>, None::<&Path>, None::<&Path>)
+    }
+
+    /// Registers a single font from bytes without bold/italic variants.
+    pub fn register_single_bytes(&mut self, name: &str, bytes: &[u8]) -> Result<()> {
+        self.register_bytes(name, bytes, None, None, None)
+    }
+
+    /// Resolves a font name through the alias chain (max 8 hops).
+    ///
+    /// Returns `None` when the font is not registered (even after alias
+    /// resolution).  Use `resolve()` for a version that always returns a family.
+    pub fn try_resolve(&self, name: &str, depth: u8) -> Option<&FontVariants> {
+        if depth > 8 {
+            eprintln!("WARNING: font alias cycle detected for '{name}'");
+            return None;
+        }
+        if let Some(family) = self.families.get(name) {
+            return Some(family);
+        }
+        if let Some(target) = self.aliases.get(name) {
+            return self.try_resolve(target, depth + 1);
+        }
+        None
+    }
+
+    /// Resolves a font name through the alias chain.
+    ///
+    /// Never returns `None` — always falls back to the default family.
+    pub fn resolve(&self, name: &str) -> &FontVariants {
+        self.try_resolve(name, 0).unwrap_or_else(|| self.get_default())
+    }
+
+    /// Returns `true` if the name resolves to a registered family (directly or via alias).
+    pub fn contains(&self, name: &str) -> bool {
+        self.try_resolve(name, 0).is_some() || self.aliases.contains_key(name)
+    }
+
+    /// Returns the names of all directly registered font families.
+    pub fn registered_families(&self) -> Vec<&str> {
+        self.families.keys().map(|s| s.as_str()).collect()
+    }
+
+    /// Loads all TTF/OTF fonts from a directory into this registry.
+    ///
+    /// Files are grouped by the stem prefix before the last separator (`-`, `_`, ` `).
+    /// Recognised variant suffixes: `Regular`, `Bold`, `Italic`, `BoldItalic`.
+    /// Returns the number of families added.
+    pub fn load_dir(&mut self, dir: impl AsRef<Path>) -> Result<usize> {
+        let dir = dir.as_ref();
+        if !dir.is_dir() {
+            return Err(NormaxisPdfError::FontLoadError(
+                format!("not a directory: {}", dir.display()),
+            ));
+        }
+
+        let mut map: HashMap<String, [Option<Vec<u8>>; 4]> = HashMap::new();
+
+        for entry in std::fs::read_dir(dir).map_err(NormaxisPdfError::IoError)? {
+            let path = entry.map_err(NormaxisPdfError::IoError)?.path();
+            let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+            if !matches!(ext.to_lowercase().as_str(), "ttf" | "otf") {
+                continue;
+            }
+            let stem = match path.file_stem().and_then(|s| s.to_str()) {
+                Some(s) => s.to_string(),
+                None => continue,
+            };
+            let (family, variant) = detect_variant_suffix(&stem);
+            let bytes = std::fs::read(&path).map_err(NormaxisPdfError::IoError)?;
+            let slot = map.entry(family).or_insert([None, None, None, None]);
+            match variant.to_lowercase().as_str() {
+                "regular" => slot[0] = Some(bytes),
+                "bold" => slot[1] = Some(bytes),
+                "italic" => slot[2] = Some(bytes),
+                "bolditalic" | "bold_italic" | "bold italic" => slot[3] = Some(bytes),
+                _ => {}
+            }
+        }
+
+        let count = map.len();
+        for (name, [regular, bold, italic, bold_italic]) in map {
+            if let Some(reg_bytes) = regular {
+                let fam = FontVariants::from_bytes(name.clone(), reg_bytes, bold, italic, bold_italic)?;
+                self.register(fam);
+            }
+        }
+        Ok(count)
+    }
+}
+
+/// Detects variant suffix in a font filename stem.
+///
+/// `"MyFont-Bold"` → `("MyFont", "Bold")`, `"MyFont"` → `("MyFont", "Regular")`.
+fn detect_variant_suffix(stem: &str) -> (String, String) {
+    const VARIANTS: &[&str] = &[
+        "BoldItalic", "Bold Italic", "Bold_Italic",
+        "Bold", "Italic", "Regular", "Light", "Medium",
+        "Thin", "ExtraBold", "Black", "SemiBold",
+    ];
+    for sep in &['-', '_', ' '] {
+        if let Some(pos) = stem.rfind(*sep) {
+            let suffix = &stem[pos + 1..];
+            if VARIANTS.iter().any(|v| v.eq_ignore_ascii_case(suffix)) {
+                return (stem[..pos].to_string(), suffix.to_string());
+            }
+        }
+    }
+    (stem.to_string(), "Regular".to_string())
 }
 
 impl FontRegistry {

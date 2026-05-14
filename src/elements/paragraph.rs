@@ -107,6 +107,9 @@ pub struct Paragraph {
     /// Keep all lines of this paragraph together on the same page.
     #[serde(default)]
     pub keep_lines: bool,
+    /// Per-paragraph font family override. Overrides the named style's font_family.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_family_override: Option<String>,
 }
 
 impl Paragraph {
@@ -128,6 +131,7 @@ impl Paragraph {
             background: None,
             keep_next: false,
             keep_lines: false,
+            font_family_override: None,
         }
     }
 
@@ -149,6 +153,7 @@ impl Paragraph {
             background: None,
             keep_next: false,
             keep_lines: false,
+            font_family_override: None,
         }
     }
 
@@ -227,6 +232,15 @@ impl Paragraph {
     /// Keep this paragraph on the same page as the next.
     pub fn keep_next(mut self) -> Self {
         self.keep_next = true;
+        self
+    }
+
+    /// Override the font family for this paragraph.
+    ///
+    /// Takes precedence over the named style's `font_family`.  Falls back to
+    /// the document default if the name is not registered.
+    pub fn font_family(mut self, name: impl Into<String>) -> Self {
+        self.font_family_override = Some(name.into());
         self
     }
 
@@ -330,6 +344,29 @@ impl Element for Paragraph {
             resolved.as_ref().map(|r| r.indent_first_line_mm).unwrap_or(0.0)
         };
 
+        // ── Resolve effective font family (override > named style > fallback chain > default) ──
+        let requested_family = self.font_family_override.as_deref()
+            .or_else(|| resolved.as_ref().map(|r| r.font_family.as_str()));
+        let effective_family: String = if let Some(name) = requested_family {
+            if ctx.fonts.try_resolve(name, 0).is_some() {
+                name.to_string()
+            } else {
+                // Walk the document fallback chain.
+                ctx.style.font_fallback.fonts.iter()
+                    .find(|fb| ctx.fonts.try_resolve(fb, 0).is_some())
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        if requested_family.is_some() {
+                            eprintln!("WARNING: font '{name}' not found — falling back to '{}'",
+                                ctx.default_font_family);
+                        }
+                        ctx.default_font_family.clone()
+                    })
+            }
+        } else {
+            ctx.default_font_family.clone()
+        };
+
         if is_fresh && space_before > 0.0 && !ctx.flow.is_top_of_page() {
             ctx.flow.advance(space_before);
         }
@@ -352,9 +389,19 @@ impl Element for Paragraph {
 
         let max_width = (ctx.layout.content_width_mm - indent_left - indent_right).max(1.0);
 
+        // Temporarily override the layout engine family so that glyph metrics
+        // match the font that will actually be used for rendering.
+        let saved_engine_family = ctx.layout_engine.default_family_name().to_string();
+        let family_changed = effective_family != saved_engine_family;
+        if family_changed {
+            ctx.layout_engine.set_default_family(&effective_family);
+        }
         let result = ctx.layout_engine.layout_runs(
             &ctx.fonts, &runs, max_width, effective_alignment, font_size, &self.tab_stops,
         );
+        if family_changed {
+            ctx.layout_engine.set_default_family(saved_engine_family);
+        }
 
         // ── Orphan / widow pre-calculation ────────────────────────────────────
         // Simulate how many lines fit from current cursor.
@@ -455,12 +502,12 @@ impl Element for Paragraph {
                 if seg.text.is_empty() {
                     continue;
                 }
-                let Some(font_ref) = ctx.get_font_ref(seg.style.bold, seg.style.italic) else {
+                let Some(font_ref) = ctx.get_font_ref_for(&effective_family, seg.style.bold, seg.style.italic) else {
                     continue;
                 };
                 let x = ctx.layout.content_x_mm + indent_left + first_line_extra + seg.x_offset_mm;
                 let seg_w = ctx.fonts.measure_text_mm(
-                    &seg.text, &ctx.default_font_family, seg.font_size, seg.style.bold, seg.style.italic,
+                    &seg.text, &effective_family, seg.font_size, seg.style.bold, seg.style.italic,
                 );
 
                 // Highlight pre-pass: filled rect behind the text (Artifact).
