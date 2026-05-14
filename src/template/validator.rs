@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use regex::Regex;
 
-use super::{data::NdtData, model::PlaceholderDef, TemplateError};
+use super::{TemplateError, data::NdtData, model::PlaceholderDef};
 
 /// Validate all placeholder definitions against the provided data.
 pub fn validate(

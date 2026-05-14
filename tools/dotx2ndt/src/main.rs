@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use dotx2ndt::element_mapper::{map_body_from_xml, MappingContext, OutputMode};
+use dotx2ndt::element_mapper::{MappingContext, OutputMode, map_body_from_xml};
 use dotx2ndt::extractor::DotxExtractor;
 use dotx2ndt::numbering_mapper::parse_numbering_xml;
 use dotx2ndt::placeholder::build_ndt_output;
@@ -72,7 +72,10 @@ fn main() {
     let styles_xml = match extractor.styles_xml.as_deref() {
         Some(xml) => xml.to_string(),
         None => {
-            eprintln!("error: word/styles.xml not found in {}", args.input.display());
+            eprintln!(
+                "error: word/styles.xml not found in {}",
+                args.input.display()
+            );
             std::process::exit(1);
         }
     };
@@ -95,7 +98,8 @@ fn main() {
             let slug = ndt_styles
                 .keys()
                 .find(|k| {
-                    k.replace('_', " ").eq_ignore_ascii_case(&ws.name.replace('_', " "))
+                    k.replace('_', " ")
+                        .eq_ignore_ascii_case(&ws.name.replace('_', " "))
                 })
                 .cloned()
                 .unwrap_or_else(|| slugify_name(&ws.name));
@@ -178,7 +182,13 @@ fn main() {
 /// Converts a style name to a lowercase_underscore slug.
 fn slugify_name(name: &str) -> String {
     name.chars()
-        .map(|c| if c.is_alphanumeric() || c == '_' { c.to_lowercase().next().unwrap() } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '_' {
+                c.to_lowercase().next().unwrap()
+            } else {
+                '_'
+            }
+        })
         .collect::<String>()
         .split('_')
         .filter(|s| !s.is_empty())

@@ -9,7 +9,10 @@ mod cmd {
 }
 
 #[derive(Parser)]
-#[command(name = "ndt-tools", about = "NDT (NORMAXIS Document Template) utilities")]
+#[command(
+    name = "ndt-tools",
+    about = "NDT (NORMAXIS Document Template) utilities"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -60,8 +63,9 @@ enum Command {
 
 fn read_input(path: &Option<PathBuf>) -> Result<String, String> {
     match path {
-        Some(p) => std::fs::read_to_string(p)
-            .map_err(|e| format!("cannot read {}: {e}", p.display())),
+        Some(p) => {
+            std::fs::read_to_string(p).map_err(|e| format!("cannot read {}: {e}", p.display()))
+        }
         None => {
             let mut buf = String::new();
             io::stdin()
@@ -74,8 +78,9 @@ fn read_input(path: &Option<PathBuf>) -> Result<String, String> {
 
 fn write_output(path: &Option<PathBuf>, content: &str) -> Result<(), String> {
     match path {
-        Some(p) => std::fs::write(p, content)
-            .map_err(|e| format!("cannot write {}: {e}", p.display())),
+        Some(p) => {
+            std::fs::write(p, content).map_err(|e| format!("cannot write {}: {e}", p.display()))
+        }
         None => {
             print!("{content}");
             Ok(())
@@ -87,69 +92,47 @@ fn main() {
     let cli = Cli::parse();
 
     let result = match &cli.command {
-        Command::Toml2ndt { input, output } => {
-            read_input(input)
-                .and_then(|src| {
-                    parse_ndt(&src)
-                        .map_err(|e| format!("parse error: {e}"))
-                })
-                .and_then(|doc| {
-                    serialize_ndt_json(&doc)
-                        .map_err(|e| format!("serialize error: {e}"))
-                })
-                .and_then(|json| write_output(output, &json))
-        }
+        Command::Toml2ndt { input, output } => read_input(input)
+            .and_then(|src| parse_ndt(&src).map_err(|e| format!("parse error: {e}")))
+            .and_then(|doc| serialize_ndt_json(&doc).map_err(|e| format!("serialize error: {e}")))
+            .and_then(|json| write_output(output, &json)),
 
-        Command::Ndt2toml { input, output } => {
-            read_input(input)
-                .and_then(|src| {
-                    parse_ndt(&src)
-                        .map_err(|e| format!("parse error: {e}"))
-                })
-                .and_then(|doc| {
-                    serialize_ndt_toml(&doc)
-                        .map_err(|e| format!("serialize error: {e}"))
-                })
-                .and_then(|toml_str| write_output(output, &toml_str))
-        }
+        Command::Ndt2toml { input, output } => read_input(input)
+            .and_then(|src| parse_ndt(&src).map_err(|e| format!("parse error: {e}")))
+            .and_then(|doc| serialize_ndt_toml(&doc).map_err(|e| format!("serialize error: {e}")))
+            .and_then(|toml_str| write_output(output, &toml_str)),
 
-        Command::Validate { input } => {
-            read_input(input)
-                .and_then(|src| {
-                    parse_ndt(&src).map_err(|e| format!("invalid NDT: {e}"))
-                })
-                .map(|doc| {
-                    let compat = doc
-                        .meta
-                        .as_ref()
-                        .and_then(|m| m.compat_mode)
-                        .map(|v| format!(", compat_mode={v}"))
-                        .unwrap_or_default();
-                    println!("OK — NDT v{} ({}{})", doc.ndt, detect_format_hint(&doc), compat);
-                })
-        }
+        Command::Validate { input } => read_input(input)
+            .and_then(|src| parse_ndt(&src).map_err(|e| format!("invalid NDT: {e}")))
+            .map(|doc| {
+                let compat = doc
+                    .meta
+                    .as_ref()
+                    .and_then(|m| m.compat_mode)
+                    .map(|v| format!(", compat_mode={v}"))
+                    .unwrap_or_default();
+                println!(
+                    "OK — NDT v{} ({}{})",
+                    doc.ndt,
+                    detect_format_hint(&doc),
+                    compat
+                );
+            }),
 
-        Command::Pretty { input, toml } => {
-            read_input(input)
-                .and_then(|src| {
-                    parse_ndt(&src)
-                        .map_err(|e| format!("parse error: {e}"))
-                })
-                .and_then(|doc| {
-                    if *toml {
-                        serialize_ndt_toml(&doc).map_err(|e| format!("serialize error: {e}"))
-                    } else {
-                        serialize_ndt_json(&doc).map_err(|e| format!("serialize error: {e}"))
-                    }
-                })
-                .and_then(|out| write_output(&None, &out))
-        }
+        Command::Pretty { input, toml } => read_input(input)
+            .and_then(|src| parse_ndt(&src).map_err(|e| format!("parse error: {e}")))
+            .and_then(|doc| {
+                if *toml {
+                    serialize_ndt_toml(&doc).map_err(|e| format!("serialize error: {e}"))
+                } else {
+                    serialize_ndt_json(&doc).map_err(|e| format!("serialize error: {e}"))
+                }
+            })
+            .and_then(|out| write_output(&None, &out)),
 
-        Command::PdfInspect { input } => {
-            cmd::pdf_inspect::inspect(input)
-                .map(|summary| cmd::pdf_inspect::print_report(&summary))
-                .map_err(|e| format!("error: {e}"))
-        }
+        Command::PdfInspect { input } => cmd::pdf_inspect::inspect(input)
+            .map(|summary| cmd::pdf_inspect::print_report(&summary))
+            .map_err(|e| format!("error: {e}")),
     };
 
     if let Err(e) = result {
@@ -162,4 +145,3 @@ fn detect_format_hint(doc: &normordis_pdf::NdtDocument) -> &'static str {
     let _ = doc;
     "auto-detected"
 }
-

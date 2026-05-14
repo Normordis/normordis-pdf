@@ -12,7 +12,9 @@ fn main() -> Result<()> {
             include_bytes!("../assets/fonts/LiberationSerif-Regular.ttf"),
             Some(include_bytes!("../assets/fonts/LiberationSerif-Bold.ttf")),
             Some(include_bytes!("../assets/fonts/LiberationSerif-Italic.ttf")),
-            Some(include_bytes!("../assets/fonts/LiberationSerif-BoldItalic.ttf")),
+            Some(include_bytes!(
+                "../assets/fonts/LiberationSerif-BoldItalic.ttf"
+            )),
         )?
         .font_from_bytes(
             "MonoDemo",
@@ -23,21 +25,24 @@ fn main() -> Result<()> {
         )?
         .push(Section::new("1. Fontes Embebidas (Liberation)", 1))
         .push(Paragraph::new("Este texto usa LiberationSans (default)."))
-        .push(Paragraph::new("Este texto usa LiberationSerif.")
-            .font_family("LiberationSerif"))
-        .push(Paragraph::new("Este texto usa LiberationMono.")
-            .font_family("LiberationMono"))
+        .push(Paragraph::new("Este texto usa LiberationSerif.").font_family("LiberationSerif"))
+        .push(Paragraph::new("Este texto usa LiberationMono.").font_family("LiberationMono"))
         .push(Spacer::new(4.0))
         .push(Section::new("2. Fontes Registadas Dinamicamente", 1))
-        .push(Paragraph::new("Este texto usa SerifDemo (Liberation Serif re-registado).")
-            .font_family("SerifDemo"))
-        .push(Paragraph::new("Este texto usa MonoDemo (Liberation Mono re-registado).")
-            .font_family("MonoDemo"))
+        .push(
+            Paragraph::new("Este texto usa SerifDemo (Liberation Serif re-registado).")
+                .font_family("SerifDemo"),
+        )
+        .push(
+            Paragraph::new("Este texto usa MonoDemo (Liberation Mono re-registado).")
+                .font_family("MonoDemo"),
+        )
         .push(Spacer::new(4.0))
         .push(Section::new("3. Fallback de Fonte", 1))
-        .push(Paragraph::new(
-            "Fonte inexistente → fallback automático para a chain configurada.",
-        ).font_family("FonteQueNaoExiste"))
+        .push(
+            Paragraph::new("Fonte inexistente → fallback automático para a chain configurada.")
+                .font_family("FonteQueNaoExiste"),
+        )
         .render_to_bytes()?;
 
     let out = std::env::temp_dir().join("normordis_custom_fonts.pdf");

@@ -62,10 +62,7 @@ pub fn parse_numbering_xml(xml: &str) -> HashMap<u32, ListType> {
         if node.tag_name().name() != "num" {
             continue;
         }
-        let num_id: u32 = match node
-            .attribute((W_NS, "numId"))
-            .and_then(|v| v.parse().ok())
-        {
+        let num_id: u32 = match node.attribute((W_NS, "numId")).and_then(|v| v.parse().ok()) {
             Some(id) => id,
             None => continue,
         };
@@ -75,7 +72,10 @@ pub fn parse_numbering_xml(xml: &str) -> HashMap<u32, ListType> {
                     .attribute((W_NS, "val"))
                     .and_then(|v| v.parse::<u32>().ok())
                 {
-                    let lt = abstract_types.get(&abs_id).copied().unwrap_or(ListType::Bullet);
+                    let lt = abstract_types
+                        .get(&abs_id)
+                        .copied()
+                        .unwrap_or(ListType::Bullet);
                     result.insert(num_id, lt);
                 }
             }

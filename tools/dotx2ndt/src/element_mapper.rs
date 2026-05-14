@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 
 use base64::Engine as _;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::error::Dotx2NdtError;
 use crate::numbering_mapper::ListType;
 
 const W_NS: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
-const R_NS: &str =
-    "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+const R_NS: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -58,7 +57,8 @@ impl MappingContext {
 
     fn placeholder(&mut self, prefix: &str, description: &str) -> String {
         let key = self.next_key(prefix);
-        self.placeholders.push((key.clone(), description.to_string()));
+        self.placeholders
+            .push((key.clone(), description.to_string()));
         format!("{{{{{}}}}}", key)
     }
 }
@@ -75,8 +75,16 @@ struct RawPara {
 
 #[derive(Debug, Clone)]
 enum Segment {
-    Text { text: String, bold: bool, italic: bool, underline: bool, strike: bool },
-    Image { r_id: String },
+    Text {
+        text: String,
+        bold: bool,
+        italic: bool,
+        underline: bool,
+        strike: bool,
+    },
+    Image {
+        r_id: String,
+    },
     LineBreak,
 }
 
@@ -97,23 +105,21 @@ pub fn map_body_from_xml(
     document_xml: &str,
     ctx: &mut MappingContext,
 ) -> Result<Vec<Value>, Dotx2NdtError> {
-    let doc = roxmltree::Document::parse(document_xml)
-        .map_err(|e| Dotx2NdtError::Xml(format!("{e}")))?;
+    let doc =
+        roxmltree::Document::parse(document_xml).map_err(|e| Dotx2NdtError::Xml(format!("{e}")))?;
 
     let body = doc
         .descendants()
         .find(|n| n.tag_name().name() == "body")
         .ok_or_else(|| Dotx2NdtError::Xml("missing w:body".into()))?;
 
-    let children: Vec<roxmltree::Node> =
-        body.children().filter(|n| n.is_element()).collect();
+    let children: Vec<roxmltree::Node> = body.children().filter(|n| n.is_element()).collect();
 
     // First pass: parse into raw items (with dummy-paragraph suppression)
     let mut raw_items: Vec<RawItem> = Vec::new();
     for (i, node) in children.iter().enumerate() {
         let prev_table = i > 0 && children[i - 1].tag_name().name() == "tbl";
-        let next_table =
-            i + 1 < children.len() && children[i + 1].tag_name().name() == "tbl";
+        let next_table = i + 1 < children.len() && children[i + 1].tag_name().name() == "tbl";
 
         if is_dummy_paragraph(node, prev_table, next_table) {
             continue;
@@ -234,9 +240,7 @@ fn parse_paragraph(node: &roxmltree::Node) -> RawPara {
                             }
                         }
                         "jc" => {
-                            alignment = ppr
-                                .attribute((W_NS, "val"))
-                                .map(|v| map_jc(v).to_string());
+                            alignment = ppr.attribute((W_NS, "val")).map(|v| map_jc(v).to_string());
                         }
                         _ => {}
                     }
@@ -257,7 +261,12 @@ fn parse_paragraph(node: &roxmltree::Node) -> RawPara {
         }
     }
 
-    RawPara { style_id, alignment, num_id, segments }
+    RawPara {
+        style_id,
+        alignment,
+        num_id,
+        segments,
+    }
 }
 
 fn parse_run(node: &roxmltree::Node, segments: &mut Vec<Segment>) {
@@ -274,19 +283,23 @@ fn parse_run(node: &roxmltree::Node, segments: &mut Vec<Segment>) {
             }
             match prop.tag_name().name() {
                 "b" => {
-                    bold = prop.attribute((W_NS, "val")).map_or(true, |v| v != "false" && v != "0");
+                    bold = prop
+                        .attribute((W_NS, "val"))
+                        .map_or(true, |v| v != "false" && v != "0");
                 }
                 "i" => {
-                    italic =
-                        prop.attribute((W_NS, "val")).map_or(true, |v| v != "false" && v != "0");
+                    italic = prop
+                        .attribute((W_NS, "val"))
+                        .map_or(true, |v| v != "false" && v != "0");
                 }
                 "u" => {
                     let val = prop.attribute((W_NS, "val")).unwrap_or("single");
                     underline = val != "none";
                 }
                 "strike" => {
-                    strike =
-                        prop.attribute((W_NS, "val")).map_or(true, |v| v != "false" && v != "0");
+                    strike = prop
+                        .attribute((W_NS, "val"))
+                        .map_or(true, |v| v != "false" && v != "0");
                 }
                 _ => {}
             }
@@ -301,7 +314,13 @@ fn parse_run(node: &roxmltree::Node, segments: &mut Vec<Segment>) {
             "t" => {
                 let text = child.text().unwrap_or("").to_string();
                 if !text.is_empty() {
-                    segments.push(Segment::Text { text, bold, italic, underline, strike });
+                    segments.push(Segment::Text {
+                        text,
+                        bold,
+                        italic,
+                        underline,
+                        strike,
+                    });
                 }
             }
             "br" => {
@@ -361,9 +380,18 @@ fn render_para(raw: RawPara, ctx: &mut MappingContext) -> Option<Value> {
     let image_rids: Vec<String> = raw
         .segments
         .iter()
-        .filter_map(|s| if let Segment::Image { r_id } = s { Some(r_id.clone()) } else { None })
+        .filter_map(|s| {
+            if let Segment::Image { r_id } = s {
+                Some(r_id.clone())
+            } else {
+                None
+            }
+        })
         .collect();
-    let has_text = raw.segments.iter().any(|s| matches!(s, Segment::Text { text, .. } if !text.is_empty()));
+    let has_text = raw
+        .segments
+        .iter()
+        .any(|s| matches!(s, Segment::Text { text, .. } if !text.is_empty()));
 
     if !image_rids.is_empty() && !has_text {
         // Image-only paragraph
@@ -388,7 +416,10 @@ fn render_heading(
     ctx: &mut MappingContext,
 ) -> Value {
     let text = if ctx.mode == OutputMode::Template {
-        ctx.placeholder(&format!("heading{level}"), &format!("Heading level {level} text"))
+        ctx.placeholder(
+            &format!("heading{level}"),
+            &format!("Heading level {level} text"),
+        )
     } else {
         segments_to_plain_text(segments)
     };
@@ -421,10 +452,16 @@ fn render_paragraph_value(raw: RawPara, ctx: &mut MappingContext) -> Value {
     }
 
     let has_formatting = raw.segments.iter().any(|s| {
-        matches!(s, Segment::Text { bold: true, .. }
-            | Segment::Text { italic: true, .. }
-            | Segment::Text { underline: true, .. }
-            | Segment::Text { strike: true, .. })
+        matches!(
+            s,
+            Segment::Text { bold: true, .. }
+                | Segment::Text { italic: true, .. }
+                | Segment::Text {
+                    underline: true,
+                    ..
+                }
+                | Segment::Text { strike: true, .. }
+        )
     });
 
     if has_formatting {
@@ -453,7 +490,11 @@ fn render_paragraph_value(raw: RawPara, ctx: &mut MappingContext) -> Value {
 }
 
 fn render_list(lt: ListType, paras: Vec<RawPara>, ctx: &mut MappingContext) -> Value {
-    let list_type = if lt == ListType::Ordered { "ordered" } else { "bullet" };
+    let list_type = if lt == ListType::Ordered {
+        "ordered"
+    } else {
+        "bullet"
+    };
     let items: Vec<Value> = paras
         .iter()
         .enumerate()
@@ -535,12 +576,26 @@ fn segments_to_ncrtf(segments: &[Segment]) -> String {
     let children: Vec<Value> = segments
         .iter()
         .filter_map(|s| match s {
-            Segment::Text { text, bold, italic, underline, strike } => {
+            Segment::Text {
+                text,
+                bold,
+                italic,
+                underline,
+                strike,
+            } => {
                 let mut marks: Vec<Value> = Vec::new();
-                if *bold { marks.push(json!("bold")); }
-                if *italic { marks.push(json!("italic")); }
-                if *underline { marks.push(json!("underline")); }
-                if *strike { marks.push(json!("strikethrough")); }
+                if *bold {
+                    marks.push(json!("bold"));
+                }
+                if *italic {
+                    marks.push(json!("italic"));
+                }
+                if *underline {
+                    marks.push(json!("underline"));
+                }
+                if *strike {
+                    marks.push(json!("strikethrough"));
+                }
                 Some(if marks.is_empty() {
                     json!({"type": "text", "text": text})
                 } else {

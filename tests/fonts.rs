@@ -86,4 +86,3 @@ fn font_family_from_bytes_invalid_returns_err() {
     let result = FontFamily::from_bytes("Bad", vec![0u8; 64], None, None, None);
     assert!(result.is_err(), "garbage bytes should fail to parse");
 }
-

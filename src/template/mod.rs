@@ -11,17 +11,15 @@ pub use registry::{NdtRegistry, TemplateFilter};
 pub use renderer::render_template;
 
 pub use ndf_pipeline::{
-    compile_ndt, parse_ndf,
-    render_ndf, render_ndf_with_fonts,
-    render_ndf_prepared_for_signing, render_ndf_prepared_for_signing_with_fonts,
-    verify_ndf, CompileOptions,
+    CompileOptions, compile_ndt, parse_ndf, render_ndf, render_ndf_prepared_for_signing,
+    render_ndf_prepared_for_signing_with_fonts, render_ndf_with_fonts, verify_ndf,
 };
 mod ndf_pipeline;
 
 pub const ENGINE_NDT_VERSION: &str = "2.1.0";
 pub const ENGINE_NDT_DATA_VERSION: &str = "1.0.0";
 
-pub use resolver::{resolve_runtime_fields, RuntimeContext};
+pub use resolver::{RuntimeContext, resolve_runtime_fields};
 
 use crate::elements::Element;
 use crate::styles::DocumentStyle;
@@ -35,7 +33,11 @@ pub enum TemplateError {
     #[error("Placeholder '{name}' invalid: {reason}")]
     InvalidPlaceholder { name: String, reason: String },
     #[error("Placeholder '{name}' type mismatch: expected {expected}, got {got}")]
-    PlaceholderTypeMismatch { name: String, expected: String, got: String },
+    PlaceholderTypeMismatch {
+        name: String,
+        expected: String,
+        got: String,
+    },
     #[error("Zone '{name}' not found")]
     ZoneNotFound { name: String },
     #[error("Include not found: {path}")]

@@ -101,8 +101,7 @@ impl NdfRecord {
 
     /// Recover the [`NdfDocument`] from this record's payload.
     pub fn to_ndf(&self) -> crate::Result<NdfDocument> {
-        serde_json::from_str(&self.payload)
-            .map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))
+        serde_json::from_str(&self.payload).map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))
     }
 
     /// SHA-256 of the raw payload bytes (independent of NDF integrity hashes).
