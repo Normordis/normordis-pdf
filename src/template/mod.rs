@@ -11,8 +11,10 @@ pub use registry::{NdtRegistry, TemplateFilter};
 pub use renderer::render_template;
 
 pub use ndf_pipeline::{
-    compile_ndt, parse_ndf, render_ndf, render_ndf_prepared_for_signing, verify_ndf,
-    CompileOptions,
+    compile_ndt, parse_ndf,
+    render_ndf, render_ndf_with_fonts,
+    render_ndf_prepared_for_signing, render_ndf_prepared_for_signing_with_fonts,
+    verify_ndf, CompileOptions,
 };
 mod ndf_pipeline;
 

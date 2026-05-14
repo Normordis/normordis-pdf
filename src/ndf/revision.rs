@@ -68,6 +68,8 @@ impl NdfRevision {
             output: original.output.clone(),
             styles: original.styles.clone(),
             content: new_content,
+            page: original.page.clone(),
+            embedded_fonts: original.embedded_fonts.clone(),
             integrity,
             audit: NdfAudit {
                 document_id: doc_id,
