@@ -62,8 +62,6 @@ struct ImageEntry {
     name: String,
     /// Allocated Ref for the image XObject stream.
     xobj_ref: Ref,
-    width_px: u32,
-    height_px: u32,
 }
 
 /// A heading recorded for inclusion in the PDF /Outlines (bookmarks) tree.
@@ -1267,7 +1265,7 @@ impl PdfBackend for PdfWriterBackend {
             xobj.bits_per_component(8);
         }
 
-        self.images.push(ImageEntry { name, xobj_ref, width_px, height_px });
+        self.images.push(ImageEntry { name, xobj_ref });
         Ok(super::ImageRef(idx))
     }
 
