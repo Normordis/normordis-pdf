@@ -49,6 +49,10 @@ fontdb e hyphenation como feature flags opcionais
 ## Alto esforço
 - **TSA timestamp (RFC 3161)** — carimbo de tempo qualificado para assinaturas eIDAS; requer chamada a servidor TSA externo
 - **generate_ndt_schema!() proc macro** — detecta `{{placeholders}}` num `.dotx` em compile-time e gera struct Rust type-safe
+- **NDF/NDT → DOCX** — reconstruir um `.docx` a partir de um NDF ou NDT; requer geração de OOXML (word/document.xml, styles.xml, etc.) a partir do body NDT
+- **NDF/NDT → HTML** — exportar para HTML estruturado a partir do body NDT; mapeamento direto dos blocos (parágrafo, lista, tabela, imagem)
+- **NDF/NDT → ODT** — exportar para OpenDocument Text a partir do body NDT
+- **NDF/NDT → Markdown** — exportar para Markdown simples; útil para conteúdo sem layout complexo
 
 ## Infra / CI
 - **veraPDF no CI** — validação automática PDF/A em GitHub Actions (veraPDF é gratuito e corre em Java)
