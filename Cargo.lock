@@ -535,6 +535,7 @@ dependencies = [
 name = "dotx2ndt"
 version = "0.2.0"
 dependencies = [
+ "base64",
  "clap",
  "roxmltree",
  "serde",
