@@ -1,6 +1,5 @@
 use normordis_pdf::{
-    ncrtf_to_elements, parse_ncrtf, DocumentBuilder, DocumentStyle,
-    richtext::marks::MarkValue,
+    DocumentBuilder, DocumentStyle, ncrtf_to_elements, parse_ncrtf, richtext::marks::MarkValue,
 };
 
 const MINIMAL_JSON: &str = r#"{
@@ -128,4 +127,3 @@ fn mark_value_deserializes_color_object() {
         other => panic!("expected Color, got {other:?}"),
     }
 }
-

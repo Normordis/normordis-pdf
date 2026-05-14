@@ -134,7 +134,8 @@ impl Element for ImageElement {
         }
 
         let img_ref = ctx.backend.embed_image(&self.data)?;
-        ctx.backend.draw_image(img_ref, x_mm, y_mm, render_w, render_h);
+        ctx.backend
+            .draw_image(img_ref, x_mm, y_mm, render_w, render_h);
 
         if ctx.ua_enabled() {
             ctx.backend.end_tagged_content();

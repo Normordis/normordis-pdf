@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::style_mapper::NdtNamedStyle;
 
@@ -18,8 +18,8 @@ pub fn build_ndt_output(
     body: Vec<Value>,
     placeholders: Vec<(String, String)>,
 ) -> Value {
-    let styles_value: Value = serde_json::to_value(named_styles)
-        .unwrap_or(Value::Object(Default::default()));
+    let styles_value: Value =
+        serde_json::to_value(named_styles).unwrap_or(Value::Object(Default::default()));
 
     let mut meta = json!({ "title": title });
     if let Some(mode) = compat_mode {

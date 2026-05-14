@@ -62,16 +62,35 @@ impl RuntimeContext {
     pub fn new(page_number: u32, total_pages: u32) -> Self {
         let dt = chrono::Local::now();
         const MONTHS: [&str; 12] = [
-            "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-            "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+            "Janeiro",
+            "Fevereiro",
+            "Março",
+            "Abril",
+            "Maio",
+            "Junho",
+            "Julho",
+            "Agosto",
+            "Setembro",
+            "Outubro",
+            "Novembro",
+            "Dezembro",
         ];
         let month_name = MONTHS[(dt.month0()) as usize];
         let today = format!("{} de {} de {}", dt.day(), month_name, dt.year());
         let now = format!(
             "{:02}/{:02}/{} {:02}:{:02}",
-            dt.day(), dt.month(), dt.year(), dt.hour(), dt.minute()
+            dt.day(),
+            dt.month(),
+            dt.year(),
+            dt.hour(),
+            dt.minute()
         );
-        Self { page_number, total_pages, today, now }
+        Self {
+            page_number,
+            total_pages,
+            today,
+            now,
+        }
     }
 }
 
@@ -93,4 +112,3 @@ pub fn resolve_runtime_fields(text: &str, ctx: &RuntimeContext) -> String {
         .replace("{{today}}", &ctx.today)
         .replace("{{now}}", &ctx.now)
 }
-

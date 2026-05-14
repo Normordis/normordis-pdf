@@ -6,7 +6,10 @@ use normordis_pdf::*;
 fn cf_01_register_bytes_liberation_sans() {
     let mut reg = FontRegistry::default();
     let bytes = include_bytes!("../assets/fonts/LiberationSans-Regular.ttf");
-    assert!(reg.register_bytes("TestSans", bytes, None, None, None).is_ok());
+    assert!(
+        reg.register_bytes("TestSans", bytes, None, None, None)
+            .is_ok()
+    );
     assert!(reg.contains("TestSans"));
 }
 
@@ -45,7 +48,10 @@ fn cf_05_contains_nonexistent_font() {
 fn cf_06_registered_families_includes_liberation_sans() {
     let reg = FontRegistry::default();
     let families = reg.registered_families();
-    assert!(families.contains(&"LiberationSans"), "missing LiberationSans in {families:?}");
+    assert!(
+        families.contains(&"LiberationSans"),
+        "missing LiberationSans in {families:?}"
+    );
 }
 
 // ── Aliases ───────────────────────────────────────────────────────────────────
@@ -126,7 +132,9 @@ fn cf_20_font_from_bytes_available_in_render() {
         .font_from_bytes(
             "CustomSans",
             include_bytes!("../assets/fonts/LiberationSans-Regular.ttf"),
-            None, None, None,
+            None,
+            None,
+            None,
         )
         .unwrap()
         .push(Paragraph::new("Texto em CustomSans.").font_family("CustomSans"))

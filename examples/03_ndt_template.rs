@@ -28,4 +28,3 @@ fn main() -> Result<()> {
     println!("PDF gerado: {} ({} bytes)", out.display(), pdf.len());
     Ok(())
 }
-

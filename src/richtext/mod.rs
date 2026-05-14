@@ -7,7 +7,7 @@ pub use model::NcrtfDocument;
 /// NCRTF format version supported by this release.
 pub const NCRTF_VERSION: &str = "1.3.0";
 
-use crate::{elements::Element, styles::DocumentStyle, NormaxisPdfError, Result};
+use crate::{NormaxisPdfError, Result, elements::Element, styles::DocumentStyle};
 
 /// Parse a JSON string as an NCRTF v1.0 document.
 ///
@@ -33,4 +33,3 @@ pub fn parse_ncrtf(json: &str) -> Result<NcrtfDocument> {
 pub fn ncrtf_to_elements(doc: &NcrtfDocument, style: &DocumentStyle) -> Vec<Box<dyn Element>> {
     converter::ncrtf_to_elements(doc, style)
 }
-

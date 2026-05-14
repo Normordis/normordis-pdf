@@ -37,17 +37,14 @@ impl DotxExtractor {
         let file = std::fs::File::open(path)
             .map_err(|e| Dotx2NdtError::Io(format!("cannot open {}: {}", path.display(), e)))?;
 
-        let mut zip = zip::ZipArchive::new(file)
-            .map_err(|e| Dotx2NdtError::Zip(format!("{e}")))?;
+        let mut zip = zip::ZipArchive::new(file).map_err(|e| Dotx2NdtError::Zip(format!("{e}")))?;
 
         // Named XML entries
-        let document_xml =
-            Self::read_zip_text(&mut zip, "word/document.xml").unwrap_or_default();
+        let document_xml = Self::read_zip_text(&mut zip, "word/document.xml").unwrap_or_default();
         let styles_xml = Self::read_zip_text(&mut zip, "word/styles.xml").ok();
         let numbering_xml = Self::read_zip_text(&mut zip, "word/numbering.xml").ok();
         let settings_xml = Self::read_zip_text(&mut zip, "word/settings.xml").ok();
-        let rels_xml =
-            Self::read_zip_text(&mut zip, "word/_rels/document.xml.rels").ok();
+        let rels_xml = Self::read_zip_text(&mut zip, "word/_rels/document.xml.rels").ok();
 
         let relationships = rels_xml
             .as_deref()
@@ -66,17 +63,21 @@ impl DotxExtractor {
             if !name.starts_with("word/media/") {
                 continue;
             }
-            let rel_path = name
-                .strip_prefix("word/")
-                .unwrap_or(&name)
-                .to_string();
+            let rel_path = name.strip_prefix("word/").unwrap_or(&name).to_string();
             let mut bytes = Vec::new();
             if entry.read_to_end(&mut bytes).is_ok() {
                 media.insert(rel_path, bytes);
             }
         }
 
-        Ok(Self { document_xml, styles_xml, numbering_xml, settings_xml, relationships, media })
+        Ok(Self {
+            document_xml,
+            styles_xml,
+            numbering_xml,
+            settings_xml,
+            relationships,
+            media,
+        })
     }
 
     /// Returns the Word compatibility mode value from `word/settings.xml`, if present.
@@ -128,9 +129,7 @@ fn parse_relationships(xml: &str) -> HashMap<String, String> {
         if node.tag_name().name() != "Relationship" {
             continue;
         }
-        if let (Some(id), Some(target)) =
-            (node.attribute("Id"), node.attribute("Target"))
-        {
+        if let (Some(id), Some(target)) = (node.attribute("Id"), node.attribute("Target")) {
             // Targets may start with "media/..." or "../media/..."
             let clean = target.trim_start_matches("../");
             map.insert(id.to_string(), clean.to_string());

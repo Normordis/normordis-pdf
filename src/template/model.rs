@@ -234,7 +234,9 @@ impl NdtTemplateRecord {
 
     /// Deserialise from a JSON string previously produced by `to_json()`.
     pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
-        Ok(Self { document: serde_json::from_str(json)? })
+        Ok(Self {
+            document: serde_json::from_str(json)?,
+        })
     }
 
     /// SHA-256 checksum of the canonical (compact) JSON serialisation.

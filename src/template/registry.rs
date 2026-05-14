@@ -1,4 +1,4 @@
-use super::model::{NdtTemplateSummary, NdtTemplateRecord, TemplateStatus};
+use super::model::{NdtTemplateRecord, NdtTemplateSummary, TemplateStatus};
 
 /// Filter criteria for listing templates in a registry.
 ///

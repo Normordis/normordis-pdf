@@ -1,7 +1,7 @@
 use normordis_pdf::{
-    parse_ndt, parse_ndt_data, serialize_ndt_json, serialize_ndt_toml,
-    template::{check_version_compatibility, validator, TemplateError},
-    DocumentBuilder, DocumentStyle,
+    DocumentBuilder, DocumentStyle, parse_ndt, parse_ndt_data, serialize_ndt_json,
+    serialize_ndt_toml,
+    template::{TemplateError, check_version_compatibility, validator},
 };
 
 const MINIMAL_NDT: &str = r#"{"ndt":"1.0.0","body":[]}"#;
@@ -44,7 +44,10 @@ fn version_compatibility_major_mismatch_err() {
     // Engine is 2.x — a template with major 3 must be rejected.
     let result = check_version_compatibility("3.0.0");
     assert!(result.is_err(), "future major version must be rejected");
-    assert!(matches!(result.unwrap_err(), TemplateError::IncompatibleVersion { .. }));
+    assert!(matches!(
+        result.unwrap_err(),
+        TemplateError::IncompatibleVersion { .. }
+    ));
 }
 
 #[test]
@@ -57,8 +60,8 @@ fn version_compatibility_v200_is_accepted() {
 
 #[test]
 fn validate_missing_required_placeholder_err() {
-    use std::collections::HashMap;
     use normordis_pdf::template::model::PlaceholderDef;
+    use std::collections::HashMap;
 
     let mut defs = HashMap::new();
     defs.insert(
@@ -77,15 +80,18 @@ fn validate_missing_required_placeholder_err() {
     let data = parse_ndt_data(MINIMAL_DATA).unwrap();
     let result = validator::validate(&defs, &data);
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), TemplateError::MissingPlaceholder { .. }));
+    assert!(matches!(
+        result.unwrap_err(),
+        TemplateError::MissingPlaceholder { .. }
+    ));
 }
 
 // ── 7. validate pattern mismatch → error ─────────────────────────────────────
 
 #[test]
 fn validate_pattern_mismatch_err() {
-    use std::collections::HashMap;
     use normordis_pdf::template::model::PlaceholderDef;
+    use std::collections::HashMap;
 
     let mut defs = HashMap::new();
     defs.insert(
@@ -105,7 +111,10 @@ fn validate_pattern_mismatch_err() {
     let data = parse_ndt_data(data_json).unwrap();
     let result = validator::validate(&defs, &data);
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), TemplateError::InvalidPlaceholder { .. }));
+    assert!(matches!(
+        result.unwrap_err(),
+        TemplateError::InvalidPlaceholder { .. }
+    ));
 }
 
 // ── 8. resolve_string replaces placeholder ────────────────────────────────────
@@ -244,7 +253,8 @@ fn push_ndt_builder_renders_ok() {
             {"type": "paragraph", "text": "{{body}}"}
         ]
     }"#;
-    let data = r#"{"ndt_data":"1.0.0","data":{"title":"Teste NDT","body":"Conteúdo do documento."}}"#;
+    let data =
+        r#"{"ndt_data":"1.0.0","data":{"title":"Teste NDT","body":"Conteúdo do documento."}}"#;
 
     let pdf = DocumentBuilder::new("NDT Test")
         .push_ndt(template, data)
@@ -306,4 +316,3 @@ fn serialize_ndt_toml_round_trip() {
         doc2.meta.as_ref().and_then(|m| m.title.as_deref()),
     );
 }
-

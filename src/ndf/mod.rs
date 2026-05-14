@@ -5,7 +5,7 @@ pub mod registry;
 pub mod revision;
 
 pub use audit::{Actor, AuditEvent, EventType, NdfAudit};
-pub use integrity::{canonical_hash, IntegrityFailure, IntegrityReport, NdfIntegrity};
+pub use integrity::{IntegrityFailure, IntegrityReport, NdfIntegrity, canonical_hash};
 pub use registry::{NdfFilter, NdfRecord, NdfRecordStatus, NdfRecordSummary, NdfRegistry};
 pub use revision::NdfRevision;
 
@@ -63,17 +63,15 @@ pub struct NdfDocument {
 impl NdfDocument {
     /// Serialises to canonical JSON per RFC 8785 / JCS.
     pub fn to_canonical_json(&self) -> crate::Result<String> {
-        let value = serde_json::to_value(self)
-            .map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))?;
+        let value =
+            serde_json::to_value(self).map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))?;
         let canonical = jcs::canonicalise(&value);
-        serde_json::to_string(&canonical)
-            .map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))
+        serde_json::to_string(&canonical).map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))
     }
 
     /// Serialises to pretty-printed JSON. Use only for debugging; not for hashing.
     pub fn to_pretty_json(&self) -> crate::Result<String> {
-        serde_json::to_string_pretty(self)
-            .map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))
+        serde_json::to_string_pretty(self).map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))
     }
 
     /// Appends an audit event, verifying content_hash for documentary events.
@@ -140,8 +138,13 @@ impl NdfDocument {
         italic: Option<&[u8]>,
         bold_italic: Option<&[u8]>,
     ) {
-        self.embedded_fonts
-            .push(NdfEmbeddedFont::from_bytes(family, regular, bold, italic, bold_italic));
+        self.embedded_fonts.push(NdfEmbeddedFont::from_bytes(
+            family,
+            regular,
+            bold,
+            italic,
+            bold_italic,
+        ));
     }
 }
 

@@ -56,7 +56,8 @@ impl Element for FixedImageBox {
             match &self.image_box.ua_role {
                 Some(tag) => {
                     let mcid = ctx.ua_tag_element(tag.clone(), self.image_box.ua_alt.clone());
-                    ctx.backend.begin_tagged_content(tag.pdf_name().as_bytes(), mcid);
+                    ctx.backend
+                        .begin_tagged_content(tag.pdf_name().as_bytes(), mcid);
                 }
                 None => {
                     ctx.backend.begin_artifact_content();
@@ -110,7 +111,9 @@ impl Element for FixedImageBox {
             }
         }
 
-        if ua { ctx.backend.end_tagged_content(); }
+        if ua {
+            ctx.backend.end_tagged_content();
+        }
         Ok(super::RenderResult::done())
     }
 }

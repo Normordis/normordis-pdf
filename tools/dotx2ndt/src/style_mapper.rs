@@ -53,23 +53,35 @@ const TWIPS_PER_MM: f64 = 56.692_913_385_826_77; // 1440 twips/inch ÷ 25.4 mm/i
 const PT_TO_MM: f64 = 25.4 / 72.0;
 
 pub fn parse_styles_xml(xml: &str) -> Result<Vec<WordStyle>, Dotx2NdtError> {
-    let doc = Document::parse(xml)
-        .map_err(|e| Dotx2NdtError::Xml(format!("{}", e)))?;
+    let doc = Document::parse(xml).map_err(|e| Dotx2NdtError::Xml(format!("{}", e)))?;
 
     let mut styles = Vec::new();
 
     for node in doc.descendants() {
-        if node.tag_name().name() != "style" { continue; }
-        if node.attribute(("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "type"))
-            .unwrap_or("") != "paragraph" {
+        if node.tag_name().name() != "style" {
+            continue;
+        }
+        if node
+            .attribute((
+                "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                "type",
+            ))
+            .unwrap_or("")
+            != "paragraph"
+        {
             continue;
         }
 
         let id = node
-            .attribute(("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "styleId"))
+            .attribute((
+                "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                "styleId",
+            ))
             .unwrap_or("")
             .to_string();
-        if id.is_empty() { continue; }
+        if id.is_empty() {
+            continue;
+        }
 
         let mut name = id.clone();
         let mut based_on: Option<String> = None;
@@ -87,60 +99,98 @@ pub fn parse_styles_xml(xml: &str) -> Result<Vec<WordStyle>, Dotx2NdtError> {
             let local = child.tag_name().name();
             match local {
                 "name" => {
-                    if let Some(val) = child.attribute(("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "val")) {
+                    if let Some(val) = child.attribute((
+                        "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                        "val",
+                    )) {
                         name = val.to_string();
                     }
                 }
                 "basedOn" => {
-                    if let Some(val) = child.attribute(("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "val")) {
+                    if let Some(val) = child.attribute((
+                        "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                        "val",
+                    )) {
                         based_on = Some(val.to_string());
                     }
                 }
                 "sz" | "szCs" if local == "sz" => {
-                    if let Some(val) = child.attribute(("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "val")) {
+                    if let Some(val) = child.attribute((
+                        "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                        "val",
+                    )) {
                         if let Ok(half_pts) = val.parse::<f64>() {
                             font_size_pt = Some(half_pts / 2.0);
                         }
                     }
                 }
                 "b" => {
-                    let val = child.attribute(("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "val"))
+                    let val = child
+                        .attribute((
+                            "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                            "val",
+                        ))
                         .unwrap_or("true");
                     bold = Some(val != "false" && val != "0");
                 }
                 "i" => {
-                    let val = child.attribute(("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "val"))
+                    let val = child
+                        .attribute((
+                            "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                            "val",
+                        ))
                         .unwrap_or("true");
                     italic = Some(val != "false" && val != "0");
                 }
                 "jc" => {
-                    if let Some(val) = child.attribute(("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "val")) {
+                    if let Some(val) = child.attribute((
+                        "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                        "val",
+                    )) {
                         alignment = Some(map_jc(val).to_string());
                     }
                 }
                 "spacing" => {
-                    if let Some(before) = child.attribute(("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "before")) {
+                    if let Some(before) = child.attribute((
+                        "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                        "before",
+                    )) {
                         if let Ok(twips) = before.parse::<f64>() {
                             space_before_pt = Some(twips / 20.0);
                         }
                     }
-                    if let Some(after) = child.attribute(("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "after")) {
+                    if let Some(after) = child.attribute((
+                        "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                        "after",
+                    )) {
                         if let Ok(twips) = after.parse::<f64>() {
                             space_after_pt = Some(twips / 20.0);
                         }
                     }
                 }
                 "ind" => {
-                    if let Some(left) = child.attribute(("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "left")) {
+                    if let Some(left) = child.attribute((
+                        "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                        "left",
+                    )) {
                         indent_left_twips = left.parse().ok();
                     }
-                    if let Some(right) = child.attribute(("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "right")) {
+                    if let Some(right) = child.attribute((
+                        "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                        "right",
+                    )) {
                         indent_right_twips = right.parse().ok();
                     }
-                    if let Some(first) = child.attribute(("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "firstLine")) {
+                    if let Some(first) = child.attribute((
+                        "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                        "firstLine",
+                    )) {
                         indent_first_line_twips = first.parse().ok();
                     }
-                    if let Some(hang) = child.attribute(("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "hanging")) {
+                    if let Some(hang) = child.attribute((
+                        "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                        "hanging",
+                    )) {
                         if let Ok(v) = hang.parse::<i64>() {
                             indent_first_line_twips = Some(-v);
                         }
@@ -189,7 +239,9 @@ pub fn to_ndt_styles(word_styles: &[WordStyle]) -> HashMap<String, NdtNamedStyle
 
     for ws in word_styles {
         let ndt_name = slugify(&ws.name);
-        let extends = ws.based_on.as_deref()
+        let extends = ws
+            .based_on
+            .as_deref()
             .and_then(|id| name_for_id.get(id))
             .map(|n| slugify(n));
 
@@ -215,11 +267,16 @@ pub fn to_ndt_styles(word_styles: &[WordStyle]) -> HashMap<String, NdtNamedStyle
 /// Converts a style name to a lowercase_underscore slug suitable as a JSON key.
 fn slugify(name: &str) -> String {
     name.chars()
-        .map(|c| if c.is_alphanumeric() || c == '_' { c.to_lowercase().next().unwrap() } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '_' {
+                c.to_lowercase().next().unwrap()
+            } else {
+                '_'
+            }
+        })
         .collect::<String>()
         .split('_')
         .filter(|s| !s.is_empty())
         .collect::<Vec<_>>()
         .join("_")
 }
-

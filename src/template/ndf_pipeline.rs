@@ -5,9 +5,9 @@ use serde_json::Value;
 use super::data::NdtData;
 use super::resolver;
 use crate::ndf::{
+    NDF_VERSION, NdfDocument, NdfEmbeddedFont, NdfMeta, NdfOrigin,
     audit::{Actor, AuditEvent, EventType, NdfAudit},
-    integrity::{canonical_hash, NdfIntegrity},
-    NdfDocument, NdfEmbeddedFont, NdfMeta, NdfOrigin, NDF_VERSION,
+    integrity::{NdfIntegrity, canonical_hash},
 };
 use crate::{NormaxisPdfError, Result};
 
@@ -65,8 +65,8 @@ impl Default for CompileOptions {
 /// After calling this, use [`NdfDocument::embed_font`] for any custom fonts
 /// used in the template before persisting the NDF.
 pub fn compile_ndt(ndt: &str, data: &NdtData, options: CompileOptions) -> Result<NdfDocument> {
-    let doc = super::parse_ndt(ndt)
-        .map_err(|e| NormaxisPdfError::NdfCompileError(e.to_string()))?;
+    let doc =
+        super::parse_ndt(ndt).map_err(|e| NormaxisPdfError::NdfCompileError(e.to_string()))?;
 
     if let Some(ref placeholders) = doc.placeholders {
         super::validator::validate(placeholders, data)
@@ -74,8 +74,8 @@ pub fn compile_ndt(ndt: &str, data: &NdtData, options: CompileOptions) -> Result
     }
 
     // Serialize and resolve body + style
-    let body_val = serde_json::to_value(&doc.body)
-        .map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))?;
+    let body_val =
+        serde_json::to_value(&doc.body).map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))?;
     let resolved_content = resolve_value_placeholders(body_val, data);
 
     let styles_val = serde_json::to_value(&doc.style)
@@ -118,8 +118,8 @@ pub fn compile_ndt(ndt: &str, data: &NdtData, options: CompileOptions) -> Result
         compat_mode: meta_compat,
         numbering: None,
     };
-    let meta_val = serde_json::to_value(&meta)
-        .map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))?;
+    let meta_val =
+        serde_json::to_value(&meta).map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))?;
 
     let integrity = NdfIntegrity::compute(&resolved_content, &styles_val, &meta_val)?;
     let document_id = options
@@ -300,12 +300,13 @@ fn rebuild_ndt_doc_and_fonts(
     ndf: &NdfDocument,
     extra_fonts: Option<&crate::fonts::FontRegistry>,
 ) -> Result<(super::model::NdtDocument, crate::fonts::FontRegistry)> {
-    let body: Vec<super::model::BodyElement> =
-        serde_json::from_value(ndf.content.clone())
-            .map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))?;
+    let body: Vec<super::model::BodyElement> = serde_json::from_value(ndf.content.clone())
+        .map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))?;
 
-    let page: Option<super::model::NdtPage> =
-        ndf.page.as_ref().and_then(|v| serde_json::from_value(v.clone()).ok());
+    let page: Option<super::model::NdtPage> = ndf
+        .page
+        .as_ref()
+        .and_then(|v| serde_json::from_value(v.clone()).ok());
 
     let ndt_doc = super::model::NdtDocument {
         ndt: "2.1.0".into(),
@@ -351,17 +352,26 @@ fn decode_and_register_font(
     let bold = ef
         .bold
         .as_deref()
-        .map(|s| dec.decode(s).map_err(|e| NormaxisPdfError::FontLoadError(e.to_string())))
+        .map(|s| {
+            dec.decode(s)
+                .map_err(|e| NormaxisPdfError::FontLoadError(e.to_string()))
+        })
         .transpose()?;
     let italic = ef
         .italic
         .as_deref()
-        .map(|s| dec.decode(s).map_err(|e| NormaxisPdfError::FontLoadError(e.to_string())))
+        .map(|s| {
+            dec.decode(s)
+                .map_err(|e| NormaxisPdfError::FontLoadError(e.to_string()))
+        })
         .transpose()?;
     let bold_italic = ef
         .bold_italic
         .as_deref()
-        .map(|s| dec.decode(s).map_err(|e| NormaxisPdfError::FontLoadError(e.to_string())))
+        .map(|s| {
+            dec.decode(s)
+                .map_err(|e| NormaxisPdfError::FontLoadError(e.to_string()))
+        })
         .transpose()?;
     fonts.register_bytes(
         &ef.family,
@@ -420,9 +430,11 @@ fn empty_ndt_data() -> NdtData {
 fn resolve_value_placeholders(value: Value, data: &NdtData) -> Value {
     match value {
         Value::String(s) => Value::String(resolver::resolve_string(&s, data)),
-        Value::Array(arr) => {
-            Value::Array(arr.into_iter().map(|v| resolve_value_placeholders(v, data)).collect())
-        }
+        Value::Array(arr) => Value::Array(
+            arr.into_iter()
+                .map(|v| resolve_value_placeholders(v, data))
+                .collect(),
+        ),
         Value::Object(map) => {
             let mut new_map = serde_json::Map::new();
             for (k, v) in map {

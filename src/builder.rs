@@ -1,9 +1,11 @@
 use std::path::Path;
 
 use crate::{
+    NormaxisPdfError, Result, VERSION,
     compliance::ua::AccessibilityConfig,
     document::{CompressionLevel, Document, PdfStandard},
     elements::{
+        Element,
         fixed_image::{FixedImageBox, ImageFit},
         fixed_line::FixedLineElement,
         fixed_text::{FixedTextBox, VerticalAlign},
@@ -11,15 +13,13 @@ use crate::{
         form::FormField,
         header::{InstitutionalHeader, SectionedHeader},
         paragraph::ParagraphContent,
-        Element,
     },
     fonts::FontRegistry,
     layout::{FixedBox, TextAlign},
     richtext,
     signing::{SignatureConfig, SignatureOptions},
     styles::{DocumentStyle, RgbColor, SecurityClassification, TraceabilityMetadata, Watermark},
-    template, NormaxisPdfError, Result,
-    VERSION,
+    template,
 };
 
 /// Fluent builder for constructing and rendering a PDF document.
@@ -87,7 +87,8 @@ impl DocumentBuilder {
     pub fn add_footnote(&mut self, texts: Vec<impl Into<String>>) -> u32 {
         let number = self.next_footnote_number;
         self.next_footnote_number += 1;
-        self.footnotes.push((number, texts.into_iter().map(|s| s.into()).collect()));
+        self.footnotes
+            .push((number, texts.into_iter().map(|s| s.into()).collect()));
         number
     }
 
@@ -121,7 +122,8 @@ impl DocumentBuilder {
         italic: Option<impl AsRef<Path>>,
         bold_italic: Option<impl AsRef<Path>>,
     ) -> crate::Result<Self> {
-        self.fonts.register_file(name, regular, bold, italic, bold_italic)?;
+        self.fonts
+            .register_file(name, regular, bold, italic, bold_italic)?;
         Ok(self)
     }
 
@@ -136,7 +138,8 @@ impl DocumentBuilder {
         italic: Option<&[u8]>,
         bold_italic: Option<&[u8]>,
     ) -> crate::Result<Self> {
-        self.fonts.register_bytes(name, regular, bold, italic, bold_italic)?;
+        self.fonts
+            .register_bytes(name, regular, bold, italic, bold_italic)?;
         Ok(self)
     }
 
@@ -240,7 +243,10 @@ impl DocumentBuilder {
     ///
     /// [`PreparedPdf`]: crate::PreparedPdf
     pub fn sign(self, config: SignatureConfig) -> SigningBuilder {
-        SigningBuilder { inner: self, config }
+        SigningBuilder {
+            inner: self,
+            config,
+        }
     }
 
     /// Adds a diagonal text watermark to every page.
@@ -308,20 +314,16 @@ impl DocumentBuilder {
 
     /// Adds a fixed-position image.  Does not affect the flow cursor.
     pub fn fixed_image(mut self, box_def: FixedBox, data: Vec<u8>, fit: ImageFit) -> Self {
-        self.elements
-            .push(Box::new(FixedImageBox { image_box: box_def, data, fit }));
+        self.elements.push(Box::new(FixedImageBox {
+            image_box: box_def,
+            data,
+            fit,
+        }));
         self
     }
 
     /// Adds a fixed-position decorative line.  Does not affect the flow cursor.
-    pub fn fixed_line(
-        mut self,
-        x1: f64,
-        y1: f64,
-        x2: f64,
-        y2: f64,
-        color: RgbColor,
-    ) -> Self {
+    pub fn fixed_line(mut self, x1: f64, y1: f64, x2: f64, y2: f64, color: RgbColor) -> Self {
         self.elements
             .push(Box::new(FixedLineElement::new(x1, y1, x2, y2, color)));
         self
@@ -353,16 +355,16 @@ impl DocumentBuilder {
                 self.standard = match std_str.as_str() {
                     "pdf_a_1b" | "pdf_a1b" => PdfStandard::PdfA1b,
                     "pdf_a_2b" | "pdf_a2b" => PdfStandard::PdfA2b,
-                    "pdf_ua2"  | "pdf_ua_2" => PdfStandard::PdfUa2,
+                    "pdf_ua2" | "pdf_ua_2" => PdfStandard::PdfUa2,
                     _ => PdfStandard::Pdf17,
                 };
             }
             if let Some(ref comp_str) = output.compression {
                 self.compression = match comp_str.as_str() {
-                    "none"    => CompressionLevel::None,
-                    "fast"    => CompressionLevel::Fast,
-                    "best"    => CompressionLevel::Best,
-                    _         => CompressionLevel::Default,
+                    "none" => CompressionLevel::None,
+                    "fast" => CompressionLevel::Fast,
+                    "best" => CompressionLevel::Best,
+                    _ => CompressionLevel::Default,
                 };
             }
             // NDT 2.1.0: granular accessibility config
@@ -466,10 +468,10 @@ impl DocumentBuilder {
 
 fn parse_classification(s: &str) -> SecurityClassification {
     match s.to_ascii_lowercase().as_str() {
-        "interno" | "internal"         => SecurityClassification::Internal,
+        "interno" | "internal" => SecurityClassification::Internal,
         "confidencial" | "confidential" => SecurityClassification::Confidential,
-        "reservado" | "reserved"        => SecurityClassification::Reserved,
-        _                               => SecurityClassification::Public,
+        "reservado" | "reserved" => SecurityClassification::Reserved,
+        _ => SecurityClassification::Public,
     }
 }
 
@@ -497,4 +499,3 @@ impl SigningBuilder {
         crate::signing::sign_pdf(prepared, &config, pkcs7_der)
     }
 }
-

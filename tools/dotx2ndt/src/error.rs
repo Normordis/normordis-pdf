@@ -13,5 +13,4 @@ pub enum Dotx2NdtError {
 
     #[error("XML parse error: {0}")]
     Xml(String),
-
 }
