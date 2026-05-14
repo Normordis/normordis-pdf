@@ -7,7 +7,7 @@ This repository is bilingual. The authoritative programming reference is `MANUAL
 ```toml
 # Cargo.toml
 [dependencies]
-normordis-pdf = "2.4.0"
+normordis-pdf = "2.5.0"
 ```
 
 ```rust
