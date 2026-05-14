@@ -1,11 +1,15 @@
 pub mod audit;
 pub mod integrity;
 pub mod jcs;
+pub mod registry;
 pub mod revision;
 
 pub use audit::{Actor, AuditEvent, EventType, NdfAudit};
 pub use integrity::{canonical_hash, IntegrityFailure, IntegrityReport, NdfIntegrity};
+pub use registry::{NdfFilter, NdfRecord, NdfRecordStatus, NdfRecordSummary, NdfRegistry};
 pub use revision::NdfRevision;
+
+use base64::Engine as _;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -48,6 +52,12 @@ pub struct NdfDocument {
     /// Append-only list of digital signatures.
     #[serde(default)]
     pub signatures: Vec<NdfSignature>,
+    /// NDT page configuration (header/footer). Stored for historical regeneration. Immutable.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page: Option<Value>,
+    /// Custom font families embedded as base64 for self-contained historical regeneration.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub embedded_fonts: Vec<NdfEmbeddedFont>,
 }
 
 impl NdfDocument {
@@ -116,6 +126,65 @@ impl NdfDocument {
 
     pub fn is_revision(&self) -> bool {
         self.revision.is_some()
+    }
+
+    /// Embed a custom font family into this NDF for self-contained historical regeneration.
+    ///
+    /// Call this after [`compile_ndt`] for each non-built-in font used in the template.
+    /// Built-in fonts (Liberation Sans/Serif/Mono, Libertinus Serif) do not need embedding.
+    pub fn embed_font(
+        &mut self,
+        family: &str,
+        regular: &[u8],
+        bold: Option<&[u8]>,
+        italic: Option<&[u8]>,
+        bold_italic: Option<&[u8]>,
+    ) {
+        self.embedded_fonts
+            .push(NdfEmbeddedFont::from_bytes(family, regular, bold, italic, bold_italic));
+    }
+}
+
+// ── NdfEmbeddedFont ───────────────────────────────────────────────────────────
+
+/// A custom font family embedded in an NDF archive as base64-encoded TTF/OTF bytes.
+///
+/// Store in [`NdfDocument::embedded_fonts`] so the document is self-contained
+/// for historical regeneration without external font files.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NdfEmbeddedFont {
+    /// Font family name as used in the template (e.g. `"Roboto"`, `"FiraSans"`).
+    pub family: String,
+    /// Regular variant — base64-encoded TTF/OTF. Required.
+    pub regular: String,
+    /// Bold variant — base64-encoded TTF/OTF.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bold: Option<String>,
+    /// Italic variant — base64-encoded TTF/OTF.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub italic: Option<String>,
+    /// Bold-italic variant — base64-encoded TTF/OTF.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bold_italic: Option<String>,
+}
+
+impl NdfEmbeddedFont {
+    /// Encode raw font bytes into an [`NdfEmbeddedFont`] record.
+    pub fn from_bytes(
+        family: &str,
+        regular: &[u8],
+        bold: Option<&[u8]>,
+        italic: Option<&[u8]>,
+        bold_italic: Option<&[u8]>,
+    ) -> Self {
+        let enc = base64::engine::general_purpose::STANDARD;
+        Self {
+            family: family.to_string(),
+            regular: enc.encode(regular),
+            bold: bold.map(|b| enc.encode(b)),
+            italic: italic.map(|b| enc.encode(b)),
+            bold_italic: bold_italic.map(|b| enc.encode(b)),
+        }
     }
 }
 

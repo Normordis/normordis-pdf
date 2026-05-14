@@ -173,7 +173,9 @@ pub use template::{
 // ── NDF pipeline ─────────────────────────────────────────────────────────────
 
 pub use template::{
-    compile_ndt, parse_ndf, render_ndf, render_ndf_prepared_for_signing,
+    compile_ndt, parse_ndf,
+    render_ndf, render_ndf_with_fonts,
+    render_ndf_prepared_for_signing, render_ndf_prepared_for_signing_with_fonts,
     verify_ndf, CompileOptions,
 };
 
@@ -183,8 +185,14 @@ pub use ndf::{
     canonical_hash,
     Actor, AuditEvent, EventType,
     IntegrityFailure, IntegrityReport,
-    NdfAudit, NdfDocument, NdfIntegrity,
+    NdfAudit, NdfDocument, NdfEmbeddedFont, NdfIntegrity,
     NdfMeta, NdfMetaNumbering, NdfOrigin, NdfOutput, NdfRevision, NdfRevisionRef, NdfSignature,
+};
+
+// ── NDF document registry ────────────────────────────────────────────────────
+
+pub use ndf::{
+    NdfFilter, NdfRecord, NdfRecordStatus, NdfRecordSummary, NdfRegistry,
 };
 
 // ── NCRTF 1.3.0 types ────────────────────────────────────────────────────────
