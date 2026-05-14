@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::{
     compliance::ua::AccessibilityConfig,
     document::{CompressionLevel, Document, PdfStandard},
@@ -105,6 +107,54 @@ impl DocumentBuilder {
     pub fn fonts(mut self, fonts: FontRegistry) -> Self {
         self.fonts = fonts;
         self
+    }
+
+    /// Register a font family from TTF/OTF files on disk.
+    ///
+    /// After registration, use the name in `.font_family()` on paragraphs or
+    /// in NDT `styles.*.font_family`.
+    pub fn font_from_file(
+        mut self,
+        name: &str,
+        regular: impl AsRef<Path>,
+        bold: Option<impl AsRef<Path>>,
+        italic: Option<impl AsRef<Path>>,
+        bold_italic: Option<impl AsRef<Path>>,
+    ) -> crate::Result<Self> {
+        self.fonts.register_file(name, regular, bold, italic, bold_italic)?;
+        Ok(self)
+    }
+
+    /// Register a font family from byte slices already in memory.
+    ///
+    /// Useful for fonts embedded via `include_bytes!` or loaded from a database.
+    pub fn font_from_bytes(
+        mut self,
+        name: &str,
+        regular: &[u8],
+        bold: Option<&[u8]>,
+        italic: Option<&[u8]>,
+        bold_italic: Option<&[u8]>,
+    ) -> crate::Result<Self> {
+        self.fonts.register_bytes(name, regular, bold, italic, bold_italic)?;
+        Ok(self)
+    }
+
+    /// Load all TTF/OTF fonts from a directory into the document registry.
+    ///
+    /// Files are grouped into families by variant suffix (`-Bold`, `-Italic`, etc.).
+    pub fn fonts_from_dir(mut self, dir: impl AsRef<Path>) -> crate::Result<Self> {
+        self.fonts.load_dir(dir)?;
+        Ok(self)
+    }
+
+    /// Set the default font family for the document.
+    ///
+    /// The family must already be registered (built-in or via `font_from_*`).
+    /// Returns an error if the name is not found.
+    pub fn default_font(mut self, name: &str) -> crate::Result<Self> {
+        self.fonts.set_default(name)?;
+        Ok(self)
     }
 
     /// Set the institutional header rendered on each page.

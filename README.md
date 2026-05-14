@@ -256,10 +256,48 @@ cargo run --example <name> -p normordis-pdf
 | `02_ncrtf_document` | Document built from NCRTF rich text JSON |
 | `03_ndt_template` | Document rendered from an NDT template + runtime data |
 | `04_mixed_layout` | Flow + Fixed Box mixed (office letter style) |
+| `05_fidelity` | Sectioned header/footer, watermark, runtime fields |
+| `06_advanced_layout` | Indentation, col_span, multi-page tables |
+| `07_named_styles` | Named paragraph styles with inheritance |
+| `08_portuguese_spacing` | Portuguese hyphenation and line breaking |
+| `09_typography` | Text decorations, tab stops, borders |
+| `10_advanced_elements` | Forms, footnotes, TOC |
+| `11_size_benchmark` | Large document size benchmark |
+| `12_compliance` | PDF/A-1b + traceability |
+| `13_accessibility` | PDF/UA-2 tagged document |
+| `14_custom_fonts` | Custom TTF/OTF fonts via `font_from_bytes`, per-paragraph `.font_family()`, fallback chain |
+| `15_fonts_from_dir` | Load all fonts from a directory with `fonts_from_dir` |
 
 ## Fonts
 
-Liberation Sans (Regular, Bold, Italic, Bold Italic) is embedded at compile time via `include_bytes!`. No system fonts are required. The `FontRegistry` type allows registering additional TTF/OTF families at runtime.
+Four font families are embedded at compile time — Liberation Sans, Liberation Serif, Liberation Mono, and Libertinus Serif. No system fonts are required.
+
+```rust
+// Register any TTF/OTF font family — from bytes or from disk
+let pdf = DocumentBuilder::new("Doc")
+    .font_from_bytes(
+        "MyFont",
+        include_bytes!("assets/MyFont-Regular.ttf"),
+        Some(include_bytes!("assets/MyFont-Bold.ttf")),
+        None, None,
+    )?
+    .push(Paragraph::new("Custom font paragraph.").font_family("MyFont"))
+    .render_to_bytes()?;
+```
+
+Key font APIs:
+
+| API | Description |
+|---|---|
+| `DocumentBuilder::font_from_bytes(name, regular, bold?, italic?, bold_italic?)` | Register from `&[u8]` (e.g. `include_bytes!`) |
+| `DocumentBuilder::font_from_file(name, regular, bold?, italic?, bold_italic?)` | Register from TTF/OTF file paths |
+| `DocumentBuilder::fonts_from_dir(path)` | Scan a directory; groups files by `-Bold` / `-Italic` suffix |
+| `DocumentBuilder::default_font(name)` | Change the document default family |
+| `Paragraph::font_family(name)` | Per-paragraph font override |
+| `FontRegistry::register_bytes` / `register_file` / `load_dir` | Direct registry manipulation |
+| `DocumentStyle::font_fallback` | `FontFallbackChain` — tried in order when the requested font is not registered |
+
+Common Word font names (`Arial`, `Calibri`, `Times New Roman`, `Cambria`, `Consolas`, etc.) are pre-registered as aliases to their Liberation equivalents.
 
 ## Version constants
 

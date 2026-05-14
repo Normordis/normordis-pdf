@@ -88,7 +88,7 @@ pub use styles::{
 
 pub use fonts::{
     liberation_sans_family, liberation_serif_family, liberation_mono_family,
-    FontData, FontVariants, ShapedGlyph,
+    FontData, FontFallbackChain, FontVariants, ShapedGlyph,
     // v1.3.x backward-compatibility aliases
     FontFamily, FontVariant,
     FontRegistry,
