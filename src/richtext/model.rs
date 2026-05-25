@@ -51,6 +51,11 @@ pub struct ParagraphBlock {
     #[serde(default)]
     pub indent: Option<u8>,
     pub style: Option<String>,
+    /// Default font family for the paragraph. Canonical normordis-pdf name:
+    /// `"LiberationSans"` | `"LiberationSerif"` | `"LiberationMono"`.
+    /// Inline `font_family` marks on individual text nodes take precedence.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_family: Option<String>,
     pub children: Vec<Inline>,
 }
 
@@ -59,6 +64,10 @@ pub struct HeadingBlock {
     /// Heading depth 1–6 (analogous to H1–H6).
     pub level: u8,
     pub alignment: Option<TextAlign>,
+    /// Default font family for the heading. Canonical normordis-pdf name.
+    /// Inline `font_family` marks take precedence.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_family: Option<String>,
     pub children: Vec<Inline>,
 }
 

@@ -77,12 +77,13 @@ Parágrafo de texto com inlines.
 }
 ```
 
-| Campo       | Tipo       | Obrigatório | Valores                                    |
-|-------------|------------|-------------|-------------------------------------------|
-| `alignment` | `string`   | Não         | `"left"` `"center"` `"right"` `"justify"` |
-| `indent`    | `integer`  | Não         | 0–10                                       |
-| `style`     | `string`   | Não         | Identificador de estilo tipográfico        |
-| `children`  | `Inline[]` | Sim         | Nodos inline                               |
+| Campo        | Tipo       | Obrigatório | Valores                                                  |
+|--------------|------------|-------------|----------------------------------------------------------|
+| `alignment`  | `string`   | Não         | `"left"` `"center"` `"right"` `"justify"`               |
+| `indent`     | `integer`  | Não         | 0–10                                                     |
+| `style`      | `string`   | Não         | Identificador de estilo tipográfico                      |
+| `font_family`| `string`   | Não         | Família de fonte padrão do parágrafo (`"LiberationSans"` \| `"LiberationSerif"` \| `"LiberationMono"`). Marcas inline sobrepõem este valor. |
+| `children`   | `Inline[]` | Sim         | Nodos inline                                             |
 
 ### 3.2 `heading`
 
@@ -93,15 +94,17 @@ Título com nível hierárquico.
   "type": "heading",
   "level": 1,
   "alignment": "left",
+  "font_family": "LiberationSerif",
   "children": [ ... ]
 }
 ```
 
-| Campo       | Tipo       | Obrigatório | Valores                                    |
-|-------------|------------|-------------|-------------------------------------------|
-| `level`     | `integer`  | Sim         | 1–6                                        |
-| `alignment` | `string`   | Não         | `"left"` `"center"` `"right"` `"justify"` |
-| `children`  | `Inline[]` | Sim         | Nodos inline                               |
+| Campo        | Tipo       | Obrigatório | Valores                                                  |
+|--------------|------------|-------------|----------------------------------------------------------|
+| `level`      | `integer`  | Sim         | 1–6                                                      |
+| `alignment`  | `string`   | Não         | `"left"` `"center"` `"right"` `"justify"`               |
+| `font_family`| `string`   | Não         | Família de fonte padrão do heading. Marcas inline sobrepõem. |
+| `children`   | `Inline[]` | Sim         | Nodos inline                                             |
 
 ### 3.3 `list`
 
@@ -356,16 +359,16 @@ As marcas podem ser simples strings ou objectos parametrizados.
 
 ### 5.1 Marcas simples (string)
 
-| Marca           | Efeito                         |
-|-----------------|--------------------------------|
-| `"bold"`        | Negrito                        |
-| `"italic"`      | Itálico                        |
-| `"underline"`   | Sublinhado                     |
-| `"strikethrough"` | Rasurado                     |
-| `"superscript"` | Sobrescrito                    |
-| `"subscript"`   | Subscrito                      |
-| `"code"`        | Código inline (fonte monospace)|
-| `"small_caps"`  | Versaletes                     |
+| Marca             | Efeito                          |
+|-------------------|---------------------------------|
+| `"bold"`          | Negrito                         |
+| `"italic"`        | Itálico                         |
+| `"underline"`     | Sublinhado                      |
+| `"strikethrough"` | Rasurado                        |
+| `"superscript"`   | Sobrescrito                     |
+| `"subscript"`     | Subscrito                       |
+| `"code"`          | Código inline (fonte monospace) |
+| `"small_caps"`    | Versaletes                      |
 
 ### 5.2 Marcas parametrizadas (objecto)
 
@@ -393,6 +396,22 @@ As marcas podem ser simples strings ou objectos parametrizados.
 ```json
 { "type": "strikethrough", "color": "#CC0000" }
 ```
+
+**Família de fonte:**
+```json
+{ "type": "font_family", "value": "LiberationSans" }
+```
+
+Aplica a família de fonte a um fragmento de texto específico, sobrepondo o valor
+definido no bloco (`paragraph.font_family` ou `heading.font_family`).
+
+Valores suportados pelo renderizador normordis-pdf:
+
+| Valor              | Tipo          | Fallback CSS                            |
+|--------------------|---------------|-----------------------------------------|
+| `"LiberationSans"` | Sans-serif    | `LiberationSans, Arial, sans-serif`     |
+| `"LiberationSerif"`| Serif         | `LiberationSerif, Georgia, serif`       |
+| `"LiberationMono"` | Monospaced    | `LiberationMono, 'Courier New', monospace` |
 
 ---
 
