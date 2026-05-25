@@ -22,6 +22,8 @@ pub enum MarkValue {
     FontSize(f64),
     UnderlineColor(String),
     StrikethroughColor(String),
+    /// Canonical normordis-pdf font family name: `"LiberationSans"` | `"LiberationSerif"` | `"LiberationMono"`.
+    FontFamily(String),
 }
 
 impl<'de> Deserialize<'de> for MarkValue {
@@ -116,6 +118,14 @@ impl<'de> Deserialize<'de> for MarkValue {
                         let val = color_field.ok_or_else(|| de::Error::missing_field("color"))?;
                         Ok(MarkValue::StrikethroughColor(val))
                     }
+                    "font_family" => {
+                        let val = value_field
+                            .as_ref()
+                            .and_then(|v| v.as_str())
+                            .map(String::from)
+                            .ok_or_else(|| de::Error::missing_field("value"))?;
+                        Ok(MarkValue::FontFamily(val))
+                    }
                     other => Err(de::Error::unknown_variant(
                         other,
                         &[
@@ -124,6 +134,7 @@ impl<'de> Deserialize<'de> for MarkValue {
                             "font_size",
                             "underline",
                             "strikethrough",
+                            "font_family",
                         ],
                     )),
                 }
@@ -176,6 +187,12 @@ impl Serialize for MarkValue {
                 m.serialize_entry("color", c)?;
                 m.end()
             }
+            MarkValue::FontFamily(f) => {
+                let mut m = s.serialize_map(Some(2))?;
+                m.serialize_entry("type", "font_family")?;
+                m.serialize_entry("value", f)?;
+                m.end()
+            }
         }
     }
 }
@@ -211,6 +228,9 @@ pub struct AppliedStyle {
     pub underline_color: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub strikethrough_color: Option<String>,
+    /// Canonical normordis-pdf font family name overriding the paragraph default.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_family: Option<String>,
 }
 
 impl<'a> From<&'a [MarkValue]> for AppliedStyle {
@@ -237,6 +257,7 @@ impl<'a> From<&'a [MarkValue]> for AppliedStyle {
                     style.strikethrough = true;
                     style.strikethrough_color = Some(c.clone());
                 }
+                MarkValue::FontFamily(f) => style.font_family = Some(f.clone()),
             }
         }
         style
@@ -284,6 +305,7 @@ impl MarkValue {
             MarkValue::FontSize(_) => "font_size",
             MarkValue::UnderlineColor(_) => "underline",
             MarkValue::StrikethroughColor(_) => "strikethrough",
+            MarkValue::FontFamily(_) => "font_family",
         }
     }
 }
