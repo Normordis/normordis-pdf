@@ -3,6 +3,7 @@ members = [
     ".",
     "tools/dotx2ndt",
     "tools/ndt-tools",
+    "tools/verify-pdf",
 ]
 resolver = "2"
 

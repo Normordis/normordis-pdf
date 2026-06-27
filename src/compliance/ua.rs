@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 /// Configuration for PDF/UA-2 accessibility conformance.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AccessibilityConfig {
-    /// Enable PDF/UA-2 structure tree generation. Default: false.
+    /// Enable PDF/UA-2 structure tree generation. Default: true.
     pub enabled: bool,
     /// Document language for the PDF catalog (BCP 47). Default: "pt-PT".
     pub lang: String,
@@ -16,7 +16,7 @@ pub struct AccessibilityConfig {
 impl Default for AccessibilityConfig {
     fn default() -> Self {
         Self {
-            enabled: false,
+            enabled: true,
             lang: "pt-PT".into(),
             warn_missing_alt: true,
             fixed_box_default_artifact: true,

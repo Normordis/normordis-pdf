@@ -1,3 +1,6 @@
 /target
 /.claude
 AGENTS.md
+
+/dist
+/tools/verify-pdf

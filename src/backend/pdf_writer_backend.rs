@@ -158,6 +158,10 @@ pub struct PdfWriterBackend {
     current_page_links: Vec<PendingLink>,
     /// Link annotation dicts deferred to finish() so page Refs are available.
     deferred_links: Vec<DeferredLinkAnnot>,
+    /// Structure element refs for headings (H1–H6), in document order.
+    /// Populated in write_structure_tree; consumed by Outline writing in finish().
+    /// Entry i corresponds to outlines[i] (same heading, same render order).
+    heading_struct_refs: Vec<Ref>,
 }
 
 fn mm_to_pt(mm: f64) -> f32 {
@@ -177,6 +181,35 @@ fn build_xmp_pdfa(title: &str, part: u8) -> String {
                xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\">\n      \
                <pdfaid:part>{part}</pdfaid:part>\n      \
                <pdfaid:conformance>B</pdfaid:conformance>\n      \
+               <dc:format>application/pdf</dc:format>\n      \
+               <dc:title><rdf:Alt><rdf:li xml:lang=\"x-default\">{safe_title}</rdf:li></rdf:Alt></dc:title>\n      \
+               <xmp:CreatorTool>normordis-pdf</xmp:CreatorTool>\n      \
+               <xmp:CreateDate>2026-01-01T00:00:00Z</xmp:CreateDate>\n    \
+             </rdf:Description>\n  \
+           </rdf:RDF>\n\
+         </x:xmpmeta>\n\
+         <?xpacket end=\"w\"?>"
+    )
+}
+
+/// XMP for PDF/A-4f + PDF/UA-2 combined (PDF 2.0, both namespaces).
+/// PDF/A-4f allows embedded files (CAdES attachments); PDF/UA-2 requires structure tree.
+fn build_xmp_pdfa4_ua2(title: &str) -> String {
+    let safe_title = xml_escape(title);
+    format!(
+        "<?xpacket begin=\"\u{FEFF}\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?>\n\
+         <x:xmpmeta xmlns:x=\"adobe:ns:meta/\">\n  \
+           <rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\n    \
+             <rdf:Description rdf:about=\"\"\n      \
+               xmlns:pdfaid=\"http://www.aiim.org/pdfa/ns/id/\"\n      \
+               xmlns:pdfuaid=\"http://www.aiim.org/pdfua/ns/id/\"\n      \
+               xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n      \
+               xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\">\n      \
+               <pdfaid:part>4</pdfaid:part>\n      \
+               <pdfaid:conformance>F</pdfaid:conformance>\n      \
+               <pdfaid:rev>2020</pdfaid:rev>\n      \
+               <pdfuaid:part>2</pdfuaid:part>\n      \
+               <pdfuaid:rev>2024</pdfuaid:rev>\n      \
                <dc:format>application/pdf</dc:format>\n      \
                <dc:title><rdf:Alt><rdf:li xml:lang=\"x-default\">{safe_title}</rdf:li></rdf:Alt></dc:title>\n      \
                <xmp:CreatorTool>normordis-pdf</xmp:CreatorTool>\n      \
@@ -230,20 +263,13 @@ fn pdfu2_file_id(title: &str) -> Vec<u8> {
 
 impl PdfWriterBackend {
     pub fn new(title: &str, compression: u32) -> Self {
-        let mut pdf = Pdf::new();
+        let pdf = Pdf::new();
         let mut alloc = Ref::new(1);
 
         // catalog_ref is allocated now but written in finish() so PDF/A metadata
         // can be included in the same catalog dict.
         let catalog_ref = alloc.bump();
         let pages_ref = alloc.bump();
-
-        let info_ref = alloc.bump();
-        let mut info = pdf.document_info(info_ref);
-        info.producer(TextStr("normordis-pdf"));
-        info.creator(TextStr(title));
-        info.creation_date(Date::new(2026).month(1).day(1));
-        drop(info);
 
         Self {
             pdf: Some(pdf),
@@ -274,6 +300,7 @@ impl PdfWriterBackend {
             outlines: Vec::new(),
             current_page_links: Vec::new(),
             deferred_links: Vec::new(),
+            heading_struct_refs: Vec::new(),
         }
     }
 
@@ -456,6 +483,12 @@ impl PdfWriterBackend {
         page.parent(self.pages_ref)
             .media_box(Rect::new(0.0, 0.0, self.page_width_pt, self.page_height_pt))
             .contents(content_ref);
+
+        // PDF/UA-2: /StructParents is the page's key into the ParentTree NumberTree.
+        // Written for all UA pages so the ParentTree can resolve MCID → struct element.
+        if self.pdfu2 {
+            page.pair(Name(b"StructParents"), page_index as i32);
+        }
 
         // Combined annotations: sig widget (page 1 only) + any link annotations.
         {
@@ -1043,6 +1076,9 @@ impl PdfBackend for PdfWriterBackend {
                 let outline_root = self.alloc.bump();
                 let node_refs: Vec<Ref> = nodes.iter().map(|_| self.alloc.bump()).collect();
                 let page_refs_snap: Vec<Ref> = self.page_refs.clone();
+                // Snapshot heading struct refs for PDF/UA-2 structure destinations.
+                let heading_sd: Vec<Ref> = self.heading_struct_refs.clone();
+                let use_struct_dest = self.pdfu2;
 
                 let pdf = self.pdf.as_mut().expect("pdf not finished");
 
@@ -1091,14 +1127,25 @@ impl PdfBackend for PdfWriterBackend {
                         d.pair(Name(b"Last"), node_refs[*node.children.last().unwrap()]);
                         d.pair(Name(b"Count"), desc_count);
                     }
-                    // [page /XYZ 0 y 0] — navigate to heading position (zoom = 0 = unchanged)
-                    d.insert(Name(b"Dest"))
-                        .array()
-                        .item(page_ref)
-                        .item(Name(b"XYZ"))
-                        .item(0.0f32)
-                        .item(entry.y_pt)
-                        .item(0.0f32);
+                    // Destination: structure destination for PDF/UA-2 (§8.8); XYZ otherwise.
+                    let sd_ref = if use_struct_dest { heading_sd.get(node.entry_idx).copied() } else { None };
+                    if let Some(sr) = sd_ref {
+                        d.insert(Name(b"Dest"))
+                            .array()
+                            .item(sr)
+                            .item(Name(b"XYZ"))
+                            .item(0.0f32)
+                            .item(entry.y_pt)
+                            .item(0.0f32);
+                    } else {
+                        d.insert(Name(b"Dest"))
+                            .array()
+                            .item(page_ref)
+                            .item(Name(b"XYZ"))
+                            .item(0.0f32)
+                            .item(entry.y_pt)
+                            .item(0.0f32);
+                    }
                 }
 
                 Some(outline_root)
@@ -1154,6 +1201,7 @@ impl PdfBackend for PdfWriterBackend {
         {
             let pdfa = self.pdfa;
             let pdfu2 = self.pdfu2;
+            let pdfa_part = self.pdfa_part;
 
             // Allocate metadata refs before the catalog borrow.
             let (icc_ref, meta_ref) = if pdfa || pdfu2 {
@@ -1173,9 +1221,26 @@ impl PdfBackend for PdfWriterBackend {
                 pdf.set_file_id((file_id.clone(), file_id));
             }
 
+            // Document Info dict: PDF/A-4 forbids it (§6.1.3); all others use it.
+            if !(pdfa && pdfa_part >= 4) {
+                let info_ref = self.alloc.bump();
+                let mut info = pdf.document_info(info_ref);
+                info.producer(TextStr("normordis-pdf"));
+                info.creator(TextStr(&self.title));
+                info.creation_date(Date::new(2026).month(1).day(1));
+                drop(info);
+            }
+
             let ua_active = !self.ua_lang.is_empty();
             if let Some(mr) = meta_ref {
-                if pdfa {
+                if pdfa && pdfu2 {
+                    // Combined PDF/A-4f + PDF/UA-2: single XMP with both namespaces.
+                    if let Some(ir) = icc_ref {
+                        pdf.icc_profile(ir, SRGB_V2_ICC).n(3);
+                    }
+                    let xmp = build_xmp_pdfa4_ua2(&self.title);
+                    pdf.metadata(mr, xmp.as_bytes());
+                } else if pdfa {
                     if let Some(ir) = icc_ref {
                         pdf.icc_profile(ir, SRGB_V2_ICC).n(3);
                     }
@@ -1208,6 +1273,13 @@ impl PdfBackend for PdfWriterBackend {
                     .dest_output_profile(ir);
             }
 
+            // PDF/A-4f §6.9: EmbeddedFiles entry required in catalog Names dict.
+            if pdfa && pdfa_part >= 4 {
+                cat.insert(Name(b"Names")).dict()
+                    .insert(Name(b"EmbeddedFiles")).dict()
+                    .insert(Name(b"Names")).array();
+            }
+
             // PDF/UA-2: MarkInfo, /Lang, ViewerPreferences, StructTreeRoot
             if ua_active {
                 cat.mark_info().marked(true);
@@ -1215,8 +1287,9 @@ impl PdfBackend for PdfWriterBackend {
                 // ISO 14289-2 §6.9: viewer must display document title (not filename).
                 cat.viewer_preferences().display_doc_title(true);
             }
+            // StructTreeRoot is an indirect object written in pages_chunk.
             if let Some(str_root_ref) = self.struct_tree_root_ref {
-                cat.struct_tree_root().child(str_root_ref);
+                cat.pair(Name(b"StructTreeRoot"), str_root_ref);
             }
             if let Some(or) = outline_root_ref {
                 cat.pair(Name(b"Outlines"), or);
@@ -1376,24 +1449,46 @@ impl PdfBackend for PdfWriterBackend {
             })
         );
 
-        // Allocate root ref
+        // Allocate root_ref for the StructTreeRoot indirect object.
+        // The Document element gets a separate ref so the tree is:
+        //   Catalog → /StructTreeRoot root_ref
+        //   root_ref: /Type /StructTreeRoot  /K doc_elem_ref  /Namespaces [ns_ref]
+        //   doc_elem_ref: /S /Document  /NS ns_ref  /P root_ref  /K [children...]
         let root_ref = self.alloc.bump();
         self.struct_tree_root_ref = Some(root_ref);
 
-        if has_document_root {
-            // Write events starting from the existing Document root
+        // PDF 2.0 namespace dict (ISO 32000-2 §14.7.2, required by PDF/UA-2).
+        // Without explicit /NS, veraPDF assumes legacy PDF 1.x namespace.
+        let ns_ref = self.alloc.bump();
+        {
+            let mut ns = self.pages_chunk.indirect(ns_ref).dict();
+            ns.pair(Name(b"Type"), Name(b"Namespace"));
+            ns.pair(Name(b"NS"), TextStr("http://iso.org/pdf2/ssn"));
+        }
+
+        // Collect (page_idx, mcid, elem_ref) for the /ParentTree reverse mapping.
+        let mut parent_entries: Vec<(usize, u32, Ref)> = Vec::new();
+        let mut heading_refs: Vec<Ref> = Vec::new();
+
+        let doc_elem_ref = if has_document_root {
+            // Write events starting from the existing Document root.
+            // Returns the Document element ref (different from root_ref).
             let mut idx = 0usize;
             write_struct_element(
                 events,
                 &mut idx,
-                root_ref, // StructTreeRoot is the logical parent
+                root_ref, // Document element's parent = StructTreeRoot
                 &page_refs,
                 &mut self.alloc,
                 &mut self.pages_chunk,
-            );
+                ns_ref,
+                &mut parent_entries,
+                &mut heading_refs,
+            )
         } else {
-            // Wrap all events in an implicit Document element
-            let doc_elem_ref = root_ref; // reuse root_ref as Document element
+            // Wrap all events in an implicit Document element.
+            // doc_elem_ref is separate from root_ref (was incorrectly reusing it).
+            let doc_elem_ref = self.alloc.bump();
 
             let mut child_refs: Vec<Ref> = Vec::new();
             let mut mcid_children: Vec<(u32, Ref)> = Vec::new();
@@ -1409,6 +1504,9 @@ impl PdfBackend for PdfWriterBackend {
                             &page_refs,
                             &mut self.alloc,
                             &mut self.pages_chunk,
+                            ns_ref,
+                            &mut parent_entries,
+                            &mut heading_refs,
                         );
                         child_refs.push(child_ref);
                     }
@@ -1418,6 +1516,8 @@ impl PdfBackend for PdfWriterBackend {
                             .copied()
                             .unwrap_or_else(|| page_refs[0]);
                         mcid_children.push((*mcid, pr));
+                        // Direct content of the Document element.
+                        parent_entries.push((*page_idx, *mcid, doc_elem_ref));
                         idx += 1;
                     }
                     StructEvent::EndGroup => {
@@ -1426,10 +1526,11 @@ impl PdfBackend for PdfWriterBackend {
                 }
             }
 
-            // Write Document element
+            // Write Document element at doc_elem_ref; parent = StructTreeRoot ref.
             let mut elem = self.pages_chunk.struct_element(doc_elem_ref);
             elem.kind(StructRole::Document);
-            elem.parent(root_ref); // parent is the StructTreeRoot placeholder ref
+            elem.parent(root_ref);
+            elem.pair(Name(b"NS"), ns_ref);
             if !child_refs.is_empty() || !mcid_children.is_empty() {
                 let mut kids = elem.children();
                 for cr in &child_refs {
@@ -1441,11 +1542,68 @@ impl PdfBackend for PdfWriterBackend {
                         .page(*pr);
                 }
             }
+
+            doc_elem_ref
+        };
+
+        // Build /ParentTree NumberTree: page_idx → [elem_ref for MCID 0, MCID 1, ...]
+        // This allows viewers/validators to resolve MCID → structure element efficiently.
+        let total_pages = page_refs.len();
+
+        // Group parent_entries by page_idx and sort by mcid within each page.
+        let mut by_page: HashMap<usize, Vec<(u32, Ref)>> = HashMap::new();
+        for (page_idx, mcid, elem_ref) in &parent_entries {
+            by_page.entry(*page_idx).or_default().push((*mcid, *elem_ref));
         }
+        for entries in by_page.values_mut() {
+            entries.sort_by_key(|&(mcid, _)| mcid);
+        }
+
+        // Write each page's parent array as a separate indirect object.
+        let pt_ref = self.alloc.bump();
+        let mut page_arr_refs: Vec<(i32, Ref)> = Vec::with_capacity(total_pages);
+        for page_idx in 0..total_pages {
+            let arr_ref = self.alloc.bump();
+            {
+                let mut arr = self.pages_chunk.indirect(arr_ref).array();
+                if let Some(entries) = by_page.get(&page_idx) {
+                    for &(_, elem_ref) in entries {
+                        arr.item(elem_ref);
+                    }
+                }
+            }
+            page_arr_refs.push((page_idx as i32, arr_ref));
+        }
+
+        // Write NumberTree root (flat leaf node — fits all typical document sizes).
+        {
+            let mut pt_dict = self.pages_chunk.indirect(pt_ref).dict();
+            let mut nums = pt_dict.insert(Name(b"Nums")).array();
+            for &(page_idx, arr_ref) in &page_arr_refs {
+                nums.item(page_idx);
+                nums.item(arr_ref);
+            }
+        }
+
+        // Write StructTreeRoot as an indirect object so structure elements can
+        // reference it via /P and the catalog can point to it by ref.
+        {
+            let mut str_root = self.pages_chunk.indirect(root_ref).dict();
+            str_root.pair(Name(b"Type"), Name(b"StructTreeRoot"));
+            str_root.pair(Name(b"K"), doc_elem_ref);
+            str_root.insert(Name(b"Namespaces")).array().item(ns_ref);
+            str_root.pair(Name(b"ParentTree"), pt_ref);
+        }
+
+        // Store for finish() to use in Outline structure destinations.
+        self.heading_struct_refs = heading_refs;
     }
 }
 
 /// Recursively writes a structure element and its children to the chunk.
+/// `ns_ref` is the PDF 2.0 standard namespace dict (written once, referenced by all elements).
+/// `parent_entries` collects (page_idx, mcid, elem_ref) for building the /ParentTree.
+/// `heading_refs` collects struct element refs for H1–H6 in document order (for Outline SD).
 /// Returns the Ref of the written element.
 fn write_struct_element(
     events: &[crate::compliance::ua::StructEvent],
@@ -1454,6 +1612,9 @@ fn write_struct_element(
     page_refs: &[Ref],
     alloc: &mut Ref,
     chunk: &mut Chunk,
+    ns_ref: Ref,
+    parent_entries: &mut Vec<(usize, u32, Ref)>,
+    heading_refs: &mut Vec<Ref>,
 ) -> Ref {
     use crate::compliance::ua::StructEvent;
 
@@ -1467,6 +1628,17 @@ fn write_struct_element(
     *idx += 1;
 
     let elem_ref = alloc.bump();
+
+    // Record heading structure element refs in document order for Outline SD entries.
+    {
+        use crate::compliance::ua::StructTag;
+        if matches!(
+            tag,
+            StructTag::H1 | StructTag::H2 | StructTag::H3 | StructTag::H4 | StructTag::H5 | StructTag::H6
+        ) {
+            heading_refs.push(elem_ref);
+        }
+    }
 
     // Collect children first (recursive)
     let mut struct_children: Vec<Ref> = Vec::new();
@@ -1482,8 +1654,9 @@ fn write_struct_element(
                 break;
             }
             StructEvent::BeginGroup { .. } => {
-                let child_ref =
-                    write_struct_element(events, idx, elem_ref, page_refs, alloc, chunk);
+                let child_ref = write_struct_element(
+                    events, idx, elem_ref, page_refs, alloc, chunk, ns_ref, parent_entries, heading_refs,
+                );
                 struct_children.push(child_ref);
             }
             StructEvent::ContentRef { mcid, page_idx } => {
@@ -1492,6 +1665,8 @@ fn write_struct_element(
                     .copied()
                     .unwrap_or_else(|| *page_refs.first().unwrap_or(&Ref::new(1)));
                 mcid_children.push((*mcid, pr));
+                // Record (page_idx, mcid, this_elem_ref) for /ParentTree reverse mapping.
+                parent_entries.push((*page_idx, *mcid, elem_ref));
                 *idx += 1;
             }
         }
@@ -1511,6 +1686,7 @@ fn write_struct_element(
     }
 
     elem.parent(parent_ref);
+    elem.pair(Name(b"NS"), ns_ref);
 
     if let Some(ref alt_text) = alt {
         elem.alt(TextStr(alt_text));
