@@ -158,13 +158,17 @@ fn pdfa_14_size_under_600kb() {
 }
 
 #[test]
-fn pdfa_15_plain_doc_has_no_xmp() {
-    // Non-PDF/A path must not emit XMP metadata.
+fn pdfa_15_default_doc_has_combined_xmp() {
+    // Default (PdfA4Ua2) emits XMP with both pdfaid (PDF/A-4f) and pdfuaid (PDF/UA-2).
     let bytes = plain_doc();
     let raw = String::from_utf8_lossy(&bytes);
     assert!(
-        !raw.contains("pdfaid:part"),
-        "plain doc must not contain pdfaid XMP namespace"
+        raw.contains("pdfaid:part"),
+        "default doc must contain pdfaid XMP (PDF/A-4f)"
+    );
+    assert!(
+        raw.contains("pdfuaid:part"),
+        "default doc must contain pdfuaid XMP (PDF/UA-2)"
     );
 }
 

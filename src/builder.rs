@@ -73,7 +73,7 @@ impl DocumentBuilder {
             footnotes: Vec::new(),
             next_footnote_number: 1,
             compression: CompressionLevel::Default,
-            standard: PdfStandard::Pdf17,
+            standard: PdfStandard::default(),
             traceability: None,
             accessibility: AccessibilityConfig::default(),
         }
@@ -356,7 +356,9 @@ impl DocumentBuilder {
                     "pdf_a_1b" | "pdf_a1b" => PdfStandard::PdfA1b,
                     "pdf_a_2b" | "pdf_a2b" => PdfStandard::PdfA2b,
                     "pdf_ua2" | "pdf_ua_2" => PdfStandard::PdfUa2,
-                    _ => PdfStandard::Pdf17,
+                    "pdf_a4_ua2" | "pdf_a4ua2" => PdfStandard::PdfA4Ua2,
+                    "pdf17" | "pdf_1_7" => PdfStandard::Pdf17,
+                    _ => PdfStandard::default(),
                 };
             }
             if let Some(ref comp_str) = output.compression {
@@ -367,11 +369,9 @@ impl DocumentBuilder {
                     _ => CompressionLevel::Default,
                 };
             }
-            // NDT 2.1.0: granular accessibility config
-            if !self.accessibility.enabled {
-                if let Some(ref acc) = output.accessibility {
-                    self.accessibility = acc.clone();
-                }
+            // NDT output.accessibility overrides the builder default when present.
+            if let Some(ref acc) = output.accessibility {
+                self.accessibility = acc.clone();
             }
 
             if self.traceability.is_none() {

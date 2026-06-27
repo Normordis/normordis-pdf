@@ -182,9 +182,10 @@ fn size_14_producer_is_normordis_pdf() {
 fn size_15_creation_date_present() {
     let bytes = simple_doc(CompressionLevel::None);
     let raw = String::from_utf8_lossy(&bytes);
+    // PDF/A-4 (default) puts the date in XMP as xmp:CreateDate; older modes use /Info CreationDate.
     assert!(
-        raw.contains("CreationDate"),
-        "PDF should contain CreationDate"
+        raw.contains("CreationDate") || raw.contains("CreateDate"),
+        "PDF should contain a creation date in Info dict or XMP"
     );
 }
 

@@ -24,7 +24,6 @@ use crate::{
 #[serde(rename_all = "snake_case")]
 pub enum PdfStandard {
     /// Standard PDF 1.7 — no conformance requirements.
-    #[default]
     Pdf17,
     /// PDF/A-1b — ISO 19005-1, long-term archival.
     PdfA1b,
@@ -33,21 +32,27 @@ pub enum PdfStandard {
     /// PDF/UA-2 — ISO 14289-2:2024 (PDF 2.0 + accessibility structure tree).
     /// Standalone standard: does NOT imply PDF/A conformance.
     PdfUa2,
+    /// PDF/A-4f + PDF/UA-2 — combined archival and accessibility (PDF 2.0).
+    /// ISO 19005-4 (PDF/A-4f, allows embedded files) + ISO 14289-2.
+    /// This is the default: every document is archival-grade and accessible.
+    #[default]
+    PdfA4Ua2,
 }
 
 impl PdfStandard {
     pub fn is_pdfa(self) -> bool {
-        matches!(self, Self::PdfA1b | Self::PdfA2b)
+        matches!(self, Self::PdfA1b | Self::PdfA2b | Self::PdfA4Ua2)
     }
 
     pub fn is_pdfu2(self) -> bool {
-        matches!(self, Self::PdfUa2)
+        matches!(self, Self::PdfUa2 | Self::PdfA4Ua2)
     }
 
     pub fn xmp_part(self) -> u8 {
         match self {
             Self::PdfA1b => 1,
             Self::PdfA2b => 2,
+            Self::PdfA4Ua2 => 4,
             Self::PdfUa2 | Self::Pdf17 => 0,
         }
     }
@@ -198,8 +203,10 @@ impl Document {
         let (pw, ph) = style.page_size.dimensions_mm();
         let layout = PageLayout::from_style(&style);
 
-        // If PdfUa2 is requested, enable accessibility automatically
-        let accessibility = if standard == PdfStandard::PdfUa2 && !accessibility.enabled {
+        // PDF/UA-2 and PDF/A-4+UA-2 always require the structure tree.
+        let accessibility = if matches!(standard, PdfStandard::PdfUa2 | PdfStandard::PdfA4Ua2)
+            && !accessibility.enabled
+        {
             AccessibilityConfig {
                 enabled: true,
                 ..accessibility

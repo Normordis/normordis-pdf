@@ -32,9 +32,9 @@ fn tiny_png() -> Vec<u8> {
 // ── 01–03: AccessibilityConfig ────────────────────────────────────────────────
 
 #[test]
-fn ua01_default_config_has_enabled_false() {
+fn ua01_default_config_has_enabled_true() {
     let cfg = AccessibilityConfig::default();
-    assert!(!cfg.enabled);
+    assert!(cfg.enabled);
 }
 
 #[test]
