@@ -251,41 +251,43 @@ impl TextLayoutEngine {
 
         // Measure the combined width of all Word tokens up to (not including) the
         // next Tab or Break. Used for Right/Center tab look-ahead.
-        let lookahead_width = |from_idx: usize, tokens: &[Token]| -> f64 {
-            let mut w = 0.0;
-            let mut first = true;
-            for tok in &tokens[from_idx..] {
-                match tok {
-                    Token::Tab(_) | Token::Break => break,
-                    Token::Word(text, style, ls) => {
-                        if !first {
-                            w += space_w;
+        // Takes the remaining queue (current Tab already popped) and iterates from index 0.
+        let lookahead_width =
+            |queue: &std::collections::VecDeque<Token>| -> f64 {
+                let mut w = 0.0;
+                let mut first = true;
+                for tok in queue.iter() {
+                    match tok {
+                        Token::Tab(_) | Token::Break => break,
+                        Token::Word(text, style, ls) => {
+                            if !first {
+                                w += space_w;
+                            }
+                            first = false;
+                            let base = fonts.measure_text_mm(
+                                text,
+                                &self.default_family,
+                                font_size,
+                                style.bold,
+                                style.italic,
+                            );
+                            let chars = text.chars().count();
+                            w += if chars > 1 && *ls > 0.0 {
+                                base + ls * (chars - 1) as f64
+                            } else {
+                                base
+                            };
                         }
-                        first = false;
-                        let base = fonts.measure_text_mm(
-                            text,
-                            &self.default_family,
-                            font_size,
-                            style.bold,
-                            style.italic,
-                        );
-                        let chars = text.chars().count();
-                        w += if chars > 1 && *ls > 0.0 {
-                            base + ls * (chars - 1) as f64
-                        } else {
-                            base
-                        };
                     }
                 }
-            }
-            w
-        };
+                w
+            };
 
-        let n_tokens = tokens.len();
-        let mut tok_idx = 0;
+        let mut token_queue: std::collections::VecDeque<Token> =
+            tokens.into_iter().collect();
 
-        while tok_idx < n_tokens {
-            match &tokens[tok_idx] {
+        while let Some(token) = token_queue.pop_front() {
+            match token {
                 Token::Break => {
                     if !pending.is_empty() {
                         lines.push(build_line(
@@ -310,7 +312,6 @@ impl TextLayoutEngine {
                             alignment,
                         });
                     }
-                    tok_idx += 1;
                 }
 
                 Token::Tab(style) => {
@@ -391,7 +392,7 @@ impl TextLayoutEngine {
                                 x_cursor = stop_pos;
                             }
                             TabStopAlign::Right | TabStopAlign::Decimal => {
-                                let ahead_w = lookahead_width(tok_idx + 1, &tokens);
+                                let ahead_w = lookahead_width(&token_queue);
                                 let text_start = (stop_pos - ahead_w).max(x_cursor);
                                 if text_start > x_cursor {
                                     push_leader(
@@ -403,7 +404,7 @@ impl TextLayoutEngine {
                                 x_cursor = text_start;
                             }
                             TabStopAlign::Center => {
-                                let ahead_w = lookahead_width(tok_idx + 1, &tokens);
+                                let ahead_w = lookahead_width(&token_queue);
                                 let text_start = (stop_pos - ahead_w / 2.0).max(x_cursor);
                                 if text_start > x_cursor {
                                     push_leader(
@@ -447,52 +448,94 @@ impl TextLayoutEngine {
                         // No applicable tab stop — treat like a single space.
                         x_cursor += space_w;
                     }
-                    tok_idx += 1;
                 }
 
                 Token::Word(word, style, ls) => {
-                    let w = word_width(fonts, word, style.bold, style.italic, *ls);
+                    let w = word_width(fonts, &word, style.bold, style.italic, ls);
                     let gap = if pending.is_empty() { 0.0 } else { space_w };
 
                     if x_cursor + gap + w <= max_width_mm {
                         x_cursor += gap + w;
-                        pending.push((word.clone(), style.clone(), *ls));
-                        word_widths.push(w);
-                    } else if !pending.is_empty() {
-                        lines.push(build_line(
-                            &pending,
-                            &word_widths,
-                            max_width_mm,
-                            alignment,
-                            font_size,
-                            space_w,
-                            line_h,
-                            false,
-                        ));
-                        pending.clear();
-                        word_widths.clear();
-                        x_cursor = w;
-                        pending.push((word.clone(), style.clone(), *ls));
+                        pending.push((word, style, ls));
                         word_widths.push(w);
                     } else {
-                        // Oversized single word — force-add to prevent infinite loop.
-                        pending.push((word.clone(), style.clone(), *ls));
-                        word_widths.push(w);
-                        lines.push(build_line(
-                            &pending,
-                            &word_widths,
-                            max_width_mm,
-                            alignment,
-                            font_size,
-                            space_w,
-                            line_h,
-                            false,
-                        ));
-                        pending.clear();
-                        word_widths.clear();
-                        x_cursor = 0.0;
+                        // Word doesn't fit. Try hyphenation before forcing a line break.
+                        // `hyphenate_word` returns [] when the `hyphenation` feature is off,
+                        // so the find_map immediately yields None and there is no overhead.
+                        let available = max_width_mm - x_cursor - gap;
+                        let hyphen_split: Option<(String, String)> = {
+                            let breaks = self.hyphenate_word(&word);
+                            breaks.iter().rev().find_map(|&bp| {
+                                if bp == 0 || bp >= word.len() {
+                                    return None;
+                                }
+                                let head = format!("{}-", &word[..bp]);
+                                let hw =
+                                    word_width(fonts, &head, style.bold, style.italic, ls);
+                                if hw <= available {
+                                    Some((head, word[bp..].to_string()))
+                                } else {
+                                    None
+                                }
+                            })
+                        };
+
+                        if let Some((head, tail)) = hyphen_split {
+                            // head (with trailing hyphen) fits on the current line; tail
+                            // is pushed back to the front of the queue for the next line.
+                            let hw = word_width(fonts, &head, style.bold, style.italic, ls);
+                            pending.push((head, style.clone(), ls));
+                            word_widths.push(hw);
+                            lines.push(build_line(
+                                &pending,
+                                &word_widths,
+                                max_width_mm,
+                                alignment,
+                                font_size,
+                                space_w,
+                                line_h,
+                                false,
+                            ));
+                            pending.clear();
+                            word_widths.clear();
+                            token_queue.push_front(Token::Word(tail, style, ls));
+                            x_cursor = 0.0;
+                        } else if !pending.is_empty() {
+                            // No hyphen found — flush existing line, start new with this word.
+                            lines.push(build_line(
+                                &pending,
+                                &word_widths,
+                                max_width_mm,
+                                alignment,
+                                font_size,
+                                space_w,
+                                line_h,
+                                false,
+                            ));
+                            pending.clear();
+                            word_widths.clear();
+                            x_cursor = w;
+                            pending.push((word, style, ls));
+                            word_widths.push(w);
+                        } else {
+                            // Oversized single word, no hyphen fits — force-add to prevent infinite loop.
+                            pending.push((word, style, ls));
+                            word_widths.push(w);
+                            lines.push(build_line(
+                                &pending,
+                                &word_widths,
+                                max_width_mm,
+                                alignment,
+                                font_size,
+                                space_w,
+                                line_h,
+                                false,
+                            ));
+                            pending.clear();
+                            word_widths.clear();
+                            x_cursor = 0.0;
+                        }
                     }
-                    tok_idx += 1;
                 }
             }
         }

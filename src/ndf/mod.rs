@@ -14,7 +14,7 @@ use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::NormaxisPdfError;
+use crate::NormordisPdfError;
 
 /// NDF format version produced by this engine.
 pub const NDF_VERSION: &str = "1.1.0";
@@ -64,21 +64,21 @@ impl NdfDocument {
     /// Serialises to canonical JSON per RFC 8785 / JCS.
     pub fn to_canonical_json(&self) -> crate::Result<String> {
         let value =
-            serde_json::to_value(self).map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))?;
+            serde_json::to_value(self).map_err(|e| NormordisPdfError::SerdeError(e.to_string()))?;
         let canonical = jcs::canonicalise(&value);
-        serde_json::to_string(&canonical).map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))
+        serde_json::to_string(&canonical).map_err(|e| NormordisPdfError::SerdeError(e.to_string()))
     }
 
     /// Serialises to pretty-printed JSON. Use only for debugging; not for hashing.
     pub fn to_pretty_json(&self) -> crate::Result<String> {
-        serde_json::to_string_pretty(self).map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))
+        serde_json::to_string_pretty(self).map_err(|e| NormordisPdfError::SerdeError(e.to_string()))
     }
 
     /// Appends an audit event, verifying content_hash for documentary events.
     pub fn add_event(&mut self, event: AuditEvent) -> crate::Result<()> {
         if let Some(ref hash) = event.content_hash {
             if hash != &self.integrity.content_hash {
-                return Err(NormaxisPdfError::NdfAuditError(format!(
+                return Err(NormordisPdfError::NdfAuditError(format!(
                     "content_hash mismatch at event seq {} — content has been modified",
                     self.audit.next_seq()
                 )));

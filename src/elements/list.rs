@@ -181,7 +181,7 @@ impl Element for BulletList {
         let ua = ctx.ua_config.enabled;
 
         if ua && start == 0 {
-            ctx.ua_begin_group(StructTag::L, None);
+            ctx.ua_begin_group(StructTag::LBullet, None);
         }
 
         for (i, item) in self.items.iter().enumerate().skip(start) {
@@ -239,7 +239,7 @@ impl Element for OrderedList {
         let ua = ctx.ua_config.enabled;
 
         if ua && start == 0 {
-            ctx.ua_begin_group(StructTag::L, None);
+            ctx.ua_begin_group(StructTag::LOrdered, None);
         }
 
         for (i, item) in self.items.iter().enumerate().skip(start) {

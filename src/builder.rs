@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use crate::{
-    NormaxisPdfError, Result, VERSION,
+    NormordisPdfError, Result,
     compliance::ua::AccessibilityConfig,
     document::{CompressionLevel, Document, PdfStandard},
     elements::{
@@ -18,7 +18,7 @@ use crate::{
     layout::{FixedBox, TextAlign},
     richtext,
     signing::{SignatureConfig, SignatureOptions},
-    styles::{DocumentStyle, RgbColor, SecurityClassification, TraceabilityMetadata, Watermark},
+    styles::{DocumentStyle, RgbColor, TraceabilityMetadata, Watermark},
     template,
 };
 
@@ -259,7 +259,7 @@ impl DocumentBuilder {
     /// let pdf = DocumentBuilder::new("Draft")
     ///     .watermark(Watermark::new("RASCUNHO").opacity(0.12))
     ///     .render_to_bytes()?;
-    /// # Ok::<(), normordis_pdf::NormaxisPdfError>(())
+    /// # Ok::<(), normordis_pdf::NormordisPdfError>(())
     /// ```
     pub fn watermark(mut self, wm: Watermark) -> Self {
         self.watermark = Some(wm);
@@ -337,63 +337,15 @@ impl DocumentBuilder {
     /// - `output.classification` → attaches a `TraceabilityMetadata` (unless one is already set)
     pub fn push_ndt(mut self, template_json: &str, data_json: &str) -> Result<Self> {
         let doc = template::parse_ndt(template_json)
-            .map_err(|e| NormaxisPdfError::Template(e.to_string()))?;
+            .map_err(|e| NormordisPdfError::Template(e.to_string()))?;
         let data = template::parse_ndt_data(data_json)
-            .map_err(|e| NormaxisPdfError::Template(e.to_string()))?;
+            .map_err(|e| NormordisPdfError::Template(e.to_string()))?;
 
-        template::check_version_compatibility(&doc.ndt)
-            .map_err(|e| NormaxisPdfError::Template(e.to_string()))?;
-
-        if let Some(ref placeholders) = doc.placeholders {
-            template::validator::validate(placeholders, &data)
-                .map_err(|e| NormaxisPdfError::Template(e.to_string()))?;
-        }
-
-        // Apply NDT 2.0.0 output settings.
-        if let Some(ref output) = doc.output {
-            if let Some(ref std_str) = output.standard {
-                self.standard = match std_str.as_str() {
-                    "pdf_a_1b" | "pdf_a1b" => PdfStandard::PdfA1b,
-                    "pdf_a_2b" | "pdf_a2b" => PdfStandard::PdfA2b,
-                    "pdf_ua2" | "pdf_ua_2" => PdfStandard::PdfUa2,
-                    "pdf_a4_ua2" | "pdf_a4ua2" => PdfStandard::PdfA4Ua2,
-                    "pdf17" | "pdf_1_7" => PdfStandard::Pdf17,
-                    _ => PdfStandard::default(),
-                };
-            }
-            if let Some(ref comp_str) = output.compression {
-                self.compression = match comp_str.as_str() {
-                    "none" => CompressionLevel::None,
-                    "fast" => CompressionLevel::Fast,
-                    "best" => CompressionLevel::Best,
-                    _ => CompressionLevel::Default,
-                };
-            }
-            // NDT output.accessibility overrides the builder default when present.
-            if let Some(ref acc) = output.accessibility {
-                self.accessibility = acc.clone();
-            }
-
-            if self.traceability.is_none() {
-                if let Some(ref class_str) = output.classification {
-                    let classification = parse_classification(class_str);
-                    if classification != SecurityClassification::Public {
-                        self.traceability = Some(TraceabilityMetadata {
-                            engine_version: VERSION.into(),
-                            framework_version: None,
-                            entity_id: String::new(),
-                            document_ref: output.document_ref.clone(),
-                            classification,
-                            generated_at: String::new(),
-                            ndt_version: doc.ndt.clone(),
-                        });
-                    }
-                }
-            }
-        }
+        template::check_version_compatibility(&doc.ndt_version)
+            .map_err(|e| NormordisPdfError::Template(e.to_string()))?;
 
         let elements = template::render_template(&doc, &data, &self.style)
-            .map_err(|e| NormaxisPdfError::Template(e.to_string()))?;
+            .map_err(|e| NormordisPdfError::Template(e.to_string()))?;
         for el in elements {
             self.elements.push(el);
         }
@@ -466,14 +418,6 @@ impl DocumentBuilder {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-fn parse_classification(s: &str) -> SecurityClassification {
-    match s.to_ascii_lowercase().as_str() {
-        "interno" | "internal" => SecurityClassification::Internal,
-        "confidencial" | "confidential" => SecurityClassification::Confidential,
-        "reservado" | "reserved" => SecurityClassification::Reserved,
-        _ => SecurityClassification::Public,
-    }
-}
 
 // ── SigningBuilder ────────────────────────────────────────────────────────────
 

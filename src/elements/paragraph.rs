@@ -553,10 +553,35 @@ impl Element for Paragraph {
                     continue;
                 };
                 let x = ctx.layout.content_x_mm + indent_left + first_line_extra + seg.x_offset_mm;
+
+                // Per-segment size/baseline adjustments for superscript, subscript, small caps,
+                // and explicit font_size_override marks.
+                let seg_font_size = if seg.style.superscript || seg.style.subscript {
+                    seg.font_size * 0.65
+                } else if seg.style.small_caps {
+                    seg.font_size * 0.80
+                } else {
+                    seg.style.font_size_override.unwrap_or(seg.font_size)
+                };
+                // Positive offset raises the baseline (superscript); negative lowers it (subscript).
+                let y_seg = if seg.style.superscript {
+                    y + seg.font_size * 0.33 * 25.4 / 72.0
+                } else if seg.style.subscript {
+                    y - seg.font_size * 0.20 * 25.4 / 72.0
+                } else {
+                    y
+                };
+                // Small caps renders uppercase glyphs at a reduced size (no OTF smcp needed).
+                let display_text: std::borrow::Cow<str> = if seg.style.small_caps {
+                    std::borrow::Cow::Owned(seg.text.to_uppercase())
+                } else {
+                    std::borrow::Cow::Borrowed(&seg.text)
+                };
+
                 let seg_w = ctx.fonts.measure_text_mm(
-                    &seg.text,
+                    &display_text,
                     &effective_family,
-                    seg.font_size,
+                    seg_font_size,
                     seg.style.bold,
                     seg.style.italic,
                 );
@@ -586,9 +611,9 @@ impl Element for Paragraph {
                 // Text.
                 if seg.letter_spacing_mm > 0.0 {
                     let ls_pt = (seg.letter_spacing_mm * 72.0 / 25.4) as f32;
-                    ctx.draw_text_spaced(&seg.text, x, y, font_size, font_ref, &text_color, ls_pt)?;
+                    ctx.draw_text_spaced(&display_text, x, y_seg, seg_font_size, font_ref, &text_color, ls_pt)?;
                 } else {
-                    ctx.draw_text(&seg.text, x, y, font_size, font_ref, &text_color)?;
+                    ctx.draw_text(&display_text, x, y_seg, seg_font_size, font_ref, &text_color)?;
                 }
 
                 // Decoration post-pass: underline / strikethrough (Artifact).
@@ -599,11 +624,11 @@ impl Element for Paragraph {
                         ctx.backend.begin_artifact_content();
                     }
                     if underline {
-                        let ul_y = y - seg.font_size * 0.15 * 25.4 / 72.0;
+                        let ul_y = y_seg - seg_font_size * 0.15 * 25.4 / 72.0;
                         ctx.draw_hline(x, x + seg_w, ul_y, 0.5, &text_color)?;
                     }
                     if strikethrough {
-                        let st_y = y + seg.font_size * 0.25 * 25.4 / 72.0;
+                        let st_y = y_seg + seg_font_size * 0.25 * 25.4 / 72.0;
                         ctx.draw_hline(x, x + seg_w, st_y, 0.5, &text_color)?;
                     }
                     if ctx.ua_config.enabled {

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use normordis_pdf::{
     BulletList, CellPadding, DocumentBuilder, DocumentStyle, ListItemElement, NamedStyle,
-    NormaxisPdfError, Paragraph, Section, Spacer, StyleResolver, TabStop, TabStopAlign, Table,
+    NormordisPdfError, Paragraph, Section, Spacer, StyleResolver, TabStop, TabStopAlign, Table,
     TableCell, TableRow, TableStyle, TextAlign, TextRun, default_named_styles,
 };
 
@@ -203,7 +203,7 @@ fn cycle_detection_returns_error() {
     let doc = default_doc();
     let resolver = resolver_for(&styles, &doc);
     let err = resolver.resolve("a").unwrap_err();
-    assert!(matches!(err, NormaxisPdfError::StyleCycleError(_)));
+    assert!(matches!(err, NormordisPdfError::StyleCycleError(_)));
 }
 
 #[test]
@@ -212,7 +212,7 @@ fn unknown_style_returns_error() {
     let styles = empty_styles();
     let resolver = resolver_for(&styles, &doc);
     let err = resolver.resolve("nonexistent_xyz").unwrap_err();
-    assert!(matches!(err, NormaxisPdfError::UnknownStyle(_)));
+    assert!(matches!(err, NormordisPdfError::UnknownStyle(_)));
 }
 
 #[test]

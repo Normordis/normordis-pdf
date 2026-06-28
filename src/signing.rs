@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{NormaxisPdfError, Result};
+use crate::{NormordisPdfError, Result};
 
 /// Options for preparing a PDF for digital signature.
 ///
@@ -70,7 +70,7 @@ impl PreparedPdf {
     /// `pkcs7_der` must be no larger than `SignatureOptions::reserved_bytes`.
     pub fn embed_signature(mut self, pkcs7_der: &[u8]) -> Result<Vec<u8>> {
         if pkcs7_der.len() > self.reserved_bytes {
-            return Err(NormaxisPdfError::RenderError(format!(
+            return Err(NormordisPdfError::RenderError(format!(
                 "PKCS#7 blob ({} B) exceeds reserved space ({} B)",
                 pkcs7_der.len(),
                 self.reserved_bytes,
@@ -156,7 +156,7 @@ impl SignatureConfig {
 /// // Sign externally — here we use an empty placeholder:
 /// let pkcs7_der: Vec<u8> = vec![]; // replace with real DER from your HSM
 /// let signed = sign_pdf(prepared, &config, &pkcs7_der)?;
-/// # Ok::<(), normordis_pdf::NormaxisPdfError>(())
+/// # Ok::<(), normordis_pdf::NormordisPdfError>(())
 /// ```
 pub fn sign_pdf(
     prepared: PreparedPdf,
@@ -182,7 +182,7 @@ pub(crate) fn extract_prepared(mut bytes: Vec<u8>, reserved_bytes: usize) -> Res
         .windows(needle.len())
         .position(|w| w == needle)
         .ok_or_else(|| {
-            NormaxisPdfError::RenderError(
+            NormordisPdfError::RenderError(
                 "signature preparation failed: /Contents placeholder not found".into(),
             )
         })?;
@@ -193,7 +193,7 @@ pub(crate) fn extract_prepared(mut bytes: Vec<u8>, reserved_bytes: usize) -> Res
     // Verify expected closing '>'
     let close_pos = contents_start + 1 + reserved_bytes * 2;
     if close_pos >= bytes.len() || bytes[close_pos] != b'>' {
-        return Err(NormaxisPdfError::RenderError(
+        return Err(NormordisPdfError::RenderError(
             "signature preparation failed: /Contents closing '>' not at expected position".into(),
         ));
     }
@@ -210,7 +210,7 @@ pub(crate) fn extract_prepared(mut bytes: Vec<u8>, reserved_bytes: usize) -> Res
         .windows(br_pattern.len())
         .position(|w| w == br_pattern)
         .ok_or_else(|| {
-            NormaxisPdfError::RenderError(
+            NormordisPdfError::RenderError(
                 "signature preparation failed: /ByteRange placeholder not found".into(),
             )
         })?;

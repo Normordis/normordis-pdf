@@ -2,7 +2,7 @@ use thiserror::Error;
 
 /// All errors that can occur during PDF generation.
 #[derive(Debug, Error)]
-pub enum NormaxisPdfError {
+pub enum NormordisPdfError {
     #[error("font load error: {0}")]
     FontLoadError(String),
 
@@ -46,4 +46,8 @@ pub enum NormaxisPdfError {
     SerdeError(String),
 }
 
-pub type Result<T> = std::result::Result<T, NormaxisPdfError>;
+pub type Result<T> = std::result::Result<T, NormordisPdfError>;
+
+/// Deprecated alias — use [`NormordisPdfError`] instead.
+#[deprecated(since = "3.0.0", note = "renamed to NormordisPdfError")]
+pub type NormaxisPdfError = NormordisPdfError;

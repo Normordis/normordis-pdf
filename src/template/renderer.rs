@@ -4,7 +4,7 @@ use serde_json::Value;
 use super::{
     TemplateError,
     data::NdtData,
-    model::{BodyElement, NdtDocument},
+    model::{NdtDocument, legacy_body::BodyElement},
     resolver,
 };
 use crate::{
@@ -43,18 +43,20 @@ fn resolve_image_src(src: &str, data: &NdtData) -> Vec<u8> {
     Vec::new()
 }
 
-/// Convert an `NdtDocument` + `NdtData` into a flat list of renderable elements.
+/// NDT 2.0.0 render entry point (positioned-layout renderer not yet implemented).
 pub fn render_template(
-    doc: &NdtDocument,
-    data: &NdtData,
-    style: &DocumentStyle,
+    _doc: &NdtDocument,
+    _data: &NdtData,
+    _style: &DocumentStyle,
 ) -> Result<Vec<Box<dyn Element>>, TemplateError> {
-    render_body(&doc.body, doc, data, style)
+    Err(TemplateError::RenderError(
+        "NDT 2.0.0 positioned-layout renderer not yet implemented".into(),
+    ))
 }
 
-fn render_body(
+/// Render a legacy body element list (used by the NDF pipeline internally).
+pub(crate) fn render_body_elements(
     body: &[BodyElement],
-    doc: &NdtDocument,
     data: &NdtData,
     style: &DocumentStyle,
 ) -> Result<Vec<Box<dyn Element>>, TemplateError> {
@@ -274,66 +276,6 @@ fn render_body(
                 }));
             }
 
-            BodyElement::ZoneRef(zr) => {
-                let zones = doc
-                    .zones
-                    .as_ref()
-                    .ok_or_else(|| TemplateError::ZoneNotFound {
-                        name: zr.zone.clone(),
-                    })?;
-                let zone = zones
-                    .get(&zr.zone)
-                    .ok_or_else(|| TemplateError::ZoneNotFound {
-                        name: zr.zone.clone(),
-                    })?;
-                let mut zone_els = render_body(&zone.elements, doc, data, style)?;
-                elements.append(&mut zone_els);
-            }
-
-            BodyElement::Conditional(cond) => {
-                let branch = if evaluate_condition(
-                    &cond.condition,
-                    cond.operator.as_deref(),
-                    &cond.value,
-                    data,
-                ) {
-                    &cond.then
-                } else {
-                    &cond.else_branch
-                };
-                let mut branch_els = render_body(branch, doc, data, style)?;
-                elements.append(&mut branch_els);
-            }
-
-            BodyElement::Repeat(rep) => {
-                let items_key = rep.items.trim_matches(|c| c == '{' || c == '}');
-                let items_value = data.get(items_key);
-                let item_var = rep.item_var.as_deref().unwrap_or("item");
-
-                if let Some(Value::Array(arr)) = items_value {
-                    for item_val in arr {
-                        let mut item_data = data.clone();
-                        item_data
-                            .data
-                            .insert(item_var.to_string(), item_val.clone());
-
-                        // Flatten nested object fields under item_var prefix
-                        if let Value::Object(map) = item_val {
-                            for (k, v) in map {
-                                item_data.data.insert(format!("{item_var}.{k}"), v.clone());
-                            }
-                        }
-
-                        let mut iter_els = render_body(&rep.elements, doc, &item_data, style)?;
-                        elements.append(&mut iter_els);
-                    }
-                }
-            }
-
-            BodyElement::Include(_inc) => {
-                // TODO: v0.8.0 — load external NDT file and render recursively
-            }
-
             BodyElement::FootnoteRef(fref) => {
                 use crate::elements::footnote::{FootnoteMarkStyle, FootnoteRef};
                 let style = match fref.mark_style.as_deref() {
@@ -426,69 +368,3 @@ fn parse_overflow(s: Option<&str>) -> OverflowPolicy {
     }
 }
 
-fn evaluate_condition(
-    key: &str,
-    operator: Option<&str>,
-    expected: &Option<Value>,
-    data: &NdtData,
-) -> bool {
-    let plain_key = key.trim_matches(|c| c == '{' || c == '}');
-    let actual = data.get(plain_key);
-
-    match operator.unwrap_or("exists") {
-        "exists" => actual.is_some(),
-        "empty" => {
-            actual.is_none()
-                || actual.is_none_or(|v| match v {
-                    Value::String(s) => s.is_empty(),
-                    Value::Array(a) => a.is_empty(),
-                    Value::Null => true,
-                    _ => false,
-                })
-        }
-        "eq" => {
-            if let (Some(a), Some(e)) = (actual, expected.as_ref()) {
-                values_equal(a, e)
-            } else {
-                false
-            }
-        }
-        "neq" => {
-            if let (Some(a), Some(e)) = (actual, expected.as_ref()) {
-                !values_equal(a, e)
-            } else {
-                actual.is_none()
-            }
-        }
-        "gt" => {
-            if let (Some(a), Some(e)) = (
-                actual.and_then(|v| v.as_f64()),
-                expected.as_ref().and_then(|v| v.as_f64()),
-            ) {
-                a > e
-            } else {
-                false
-            }
-        }
-        "lt" => {
-            if let (Some(a), Some(e)) = (
-                actual.and_then(|v| v.as_f64()),
-                expected.as_ref().and_then(|v| v.as_f64()),
-            ) {
-                a < e
-            } else {
-                false
-            }
-        }
-        _ => false,
-    }
-}
-
-fn values_equal(a: &Value, b: &Value) -> bool {
-    match (a, b) {
-        (Value::String(s1), Value::String(s2)) => s1 == s2,
-        (Value::Bool(b1), Value::Bool(b2)) => b1 == b2,
-        (Value::Number(n1), Value::Number(n2)) => n1.as_f64() == n2.as_f64(),
-        _ => a == b,
-    }
-}

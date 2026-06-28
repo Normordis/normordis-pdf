@@ -7,7 +7,7 @@ This repository is bilingual. The authoritative programming reference is `MANUAL
 ```toml
 # Cargo.toml
 [dependencies]
-normordis-pdf = "2.5.0"
+normordis-pdf = "3.0.0"
 ```
 
 ```rust
@@ -124,6 +124,75 @@ normordis-pdf = { version = "...", features = ["system-fonts"] }
 #[cfg(feature = "system-fonts")]
 let reg = normordis_pdf::FontRegistry::from_system()?;
 ```
+
+## Implementing a custom element
+
+Any struct that implements `Element` can be added via `builder.push()`.
+
+Drawing calls go through `ctx.backend` (the `PdfBackend` trait). **There is no `ctx.ops` or direct printpdf integration.** `render()` returns `RenderResult`, not `()`.
+
+```rust
+use normordis_pdf::{Element, LayoutMode, RenderContext, elements::RenderResult};
+use normordis_pdf::styles::RgbColor;
+
+struct ColorBanner {
+    height_mm: f64,
+    color: RgbColor,
+}
+
+impl Element for ColorBanner {
+    fn estimated_height_mm(&self) -> f64 {
+        self.height_mm
+    }
+
+    fn render(&self, ctx: &mut RenderContext) -> normordis_pdf::Result<RenderResult> {
+        let x = ctx.layout.content_x_mm;
+        let y = ctx.flow.cursor_y_mm - self.height_mm;
+        let w = ctx.layout.content_width_mm;
+
+        // Draw via ctx.backend — never push ops directly:
+        ctx.backend.draw_rect(x, y, w, self.height_mm, &self.color)?;
+
+        // Advance the flow cursor (required for flow elements):
+        ctx.flow.advance(self.height_mm);
+
+        Ok(RenderResult::done())
+    }
+}
+```
+
+For a fixed element, override `layout_mode()` and **do not call** `ctx.flow.advance()`:
+
+```rust
+use normordis_pdf::FixedBox;
+
+fn layout_mode(&self) -> LayoutMode {
+    LayoutMode::Fixed(FixedBox {
+        x_mm: 10.0, y_mm: 50.0,
+        width_mm: 80.0, height_mm: 20.0,
+        ..Default::default()
+    })
+}
+```
+
+### Key `ctx.backend` methods
+
+| Method | Description |
+|---|---|
+| `draw_rect(x, y, w, h, fill)` | Filled rectangle |
+| `draw_rect_stroked(x, y, w, h, fill, stroke, pt)` | Rectangle with border |
+| `draw_line(x1, y1, x2, y2, width_pt, color)` | Line segment |
+| `draw_text(text, x, y, size_pt, font_ref, color, spacing)` | Text at absolute position |
+| `set_opacity(0.0–1.0)` | Opacity via ExtGState |
+| `save_state()` / `restore_state()` | Graphics state stack |
+
+Convenience wrappers directly on `ctx`:
+
+| Method | Description |
+|---|---|
+| `ctx.draw_hline(x0, x1, y, width_pt, color)` | Horizontal line |
+| `ctx.draw_vline(x, y0, y1, width_pt, color)` | Vertical line |
+| `ctx.draw_text(text, x, y, size_pt, font_ref, color, spacing)` | Text |
 
 ## Project structure
 

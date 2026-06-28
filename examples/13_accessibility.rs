@@ -72,14 +72,14 @@ fn main() -> Result<()> {
             ListItemElement::plain("Objectivo de urbanismo alcançado (105%)"),
             ListItemElement::plain("Obras públicas dentro do orçamento"),
         ]))
-        // FixedBox com role — não tratada como Artifact
+        // FixedBox com role — classificação documental (não é Caption; Caption só vale dentro de Figure/Table)
         .fixed_text(
             FixedBox {
                 x_mm: 150.0,
                 y_mm: 20.0,
                 width_mm: 50.0,
                 height_mm: 10.0,
-                ua_role: Some(StructTag::Caption),
+                ua_role: Some(StructTag::P),
                 ua_alt: None,
                 ..Default::default()
             },

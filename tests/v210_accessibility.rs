@@ -333,32 +333,27 @@ fn ndt_data() -> &'static str {
 }
 
 #[test]
-fn ua28_ndt_pdf_ua2_standard_sets_pdfa_ua2() {
-    let template = r#"{"ndt":"2.1.0","output":{"standard":"pdf_ua2"},"body":[]}"#;
+fn ua28_builder_pdfa_ua2_standard_sets_pdfa_ua2() {
     let bytes = DocumentBuilder::new("UA-28")
-        .push_ndt(template, ndt_data())
-        .unwrap()
+        .standard(normordis_pdf::PdfStandard::PdfUa2)
+        .push(Paragraph::new("Texto acessível."))
         .render_to_bytes();
     assert!(bytes.is_ok());
 }
 
 #[test]
-fn ua29_ndt_without_pdf_ua2_does_not_activate_ua() {
-    let template = r#"{"ndt":"2.0.0","body":[]}"#;
-    let b = DocumentBuilder::new("UA-29")
-        .push_ndt(template, ndt_data())
-        .unwrap();
-    let bytes = b.render_to_bytes();
+fn ua29_builder_without_ua2_does_not_activate_ua() {
+    let bytes = DocumentBuilder::new("UA-29")
+        .push(Paragraph::new("Texto normal."))
+        .render_to_bytes();
     assert!(bytes.is_ok());
 }
 
 #[test]
-fn ua30_ndt_pdf_ua2_produces_pdf_with_struct_tree_root() {
-    let template = r#"{"ndt":"2.1.0","output":{"standard":"pdf_ua2"},
-        "body":[{"type":"paragraph","text":"Acessível."}]}"#;
+fn ua30_builder_pdf_ua2_produces_pdf_with_struct_tree_root() {
     let bytes = DocumentBuilder::new("UA-30")
-        .push_ndt(template, ndt_data())
-        .unwrap()
+        .standard(normordis_pdf::PdfStandard::PdfUa2)
+        .push(Paragraph::new("Acessível."))
         .render_to_bytes()
         .unwrap();
     assert!(bytes.windows(16).any(|w| w == b"/StructTreeRoot "));

@@ -468,37 +468,33 @@ fn v200_35_signature_options_default_values() {
 // ── 36–40 NDT 2.0.0 ──────────────────────────────────────────────────────────
 
 #[test]
-fn v200_36_ndt200_output_standard_sets_pdfa() {
-    let ndt = r#"{
-        "ndt": "2.0.0",
-        "output": { "standard": "pdf_a_1b" },
-        "body": [{ "type": "paragraph", "text": "Teste." }]
-    }"#;
-    let data = r#"{"ndt_data":"1.0.0","data":{}}"#;
-    let bytes = DocumentBuilder::new("NDT 2.0.0 standard")
-        .push_ndt(ndt, data)
-        .expect("push_ndt failed")
+fn v200_36_builder_pdfa_standard_sets_output_intent() {
+    use normordis_pdf::PdfStandard;
+    let bytes = DocumentBuilder::new("PDF/A-1b test")
+        .standard(PdfStandard::PdfA1b)
+        .push(normordis_pdf::Paragraph::new("Teste PDF/A."))
         .render_to_bytes()
         .expect("render failed");
     let raw = String::from_utf8_lossy(&bytes);
-    // PDF/A-1b must include OutputIntent
     assert!(
         raw.contains("OutputIntent"),
-        "output.standard=pdf_a_1b must produce PDF/A"
+        "PDF/A-1b must include OutputIntent"
     );
 }
 
 #[test]
-fn v200_37_ndt200_output_classification_confidential_adds_watermark() {
-    let ndt = r#"{
-        "ndt": "2.0.0",
-        "output": { "classification": "confidencial" },
-        "body": [{ "type": "paragraph", "text": "Confidencial." }]
-    }"#;
-    let data = r#"{"ndt_data":"1.0.0","data":{}}"#;
-    let bytes = DocumentBuilder::new("NDT 2.0.0 classification")
-        .push_ndt(ndt, data)
-        .expect("push_ndt failed")
+fn v200_37_builder_traceability_confidential_adds_watermark() {
+    let bytes = DocumentBuilder::new("Confidencial")
+        .traceability(TraceabilityMetadata {
+            engine_version: "3.0.0".into(),
+            framework_version: None,
+            entity_id: String::new(),
+            document_ref: None,
+            classification: SecurityClassification::Confidential,
+            generated_at: String::new(),
+            ndt_version: String::new(),
+        })
+        .push(normordis_pdf::Paragraph::new("Conteúdo confidencial."))
         .render_to_bytes()
         .expect("render failed");
     let raw = String::from_utf8_lossy(&bytes);
@@ -509,50 +505,42 @@ fn v200_37_ndt200_output_classification_confidential_adds_watermark() {
 }
 
 #[test]
-fn v200_38_ndt150_compat_still_works() {
-    // Old NDT 1.x templates must still parse (version check: template_major <= engine_major)
-    let ndt = r#"{
-        "ndt": "1.1.0",
-        "body": [{ "type": "paragraph", "text": "Compatível com v1." }]
-    }"#;
-    let data = r#"{"ndt_data":"1.0.0","data":{}}"#;
-    let bytes = DocumentBuilder::new("NDT 1.1.0 compat")
-        .push_ndt(ndt, data)
-        .expect("NDT 1.x must still be accepted")
-        .render_to_bytes()
-        .expect("render failed");
-    assert!(bytes.starts_with(b"%PDF-"));
+fn v200_38_old_ndt_format_fails_to_parse() {
+    // NDT 1.x / legacy format (field `ndt`, `body`) no longer accepted in v3.0.0.
+    let ndt = r#"{"ndt": "1.1.0", "body": [{"type": "paragraph", "text": "Compatível."}]}"#;
+    let result = normordis_pdf::parse_ndt(ndt);
+    assert!(result.is_err(), "old NDT 1.x format must fail to parse in v3.0.0");
 }
 
 #[test]
 fn v200_39_ndt200_json_and_toml_parse_equivalent() {
-    let json = r#"{"ndt":"2.0.0","output":{"standard":"pdf_a_1b"},"body":[]}"#;
-    let toml = "ndt = \"2.0.0\"\n[output]\nstandard = \"pdf_a_1b\"\n";
+    let json = r#"{
+        "ndt_version": "2.0.0",
+        "schema_id": "urn:normordis:ndt:test",
+        "versao_ndt": "1.0.0",
+        "titulo": "Equivalência JSON/TOML",
+        "paginas_def": [{"id": "p1"}],
+        "sequencia": [{"pagina_def": "p1", "repeticao": "unica"}]
+    }"#;
+    let toml = "ndt_version = \"2.0.0\"\nschema_id = \"urn:normordis:ndt:test\"\nversao_ndt = \"1.0.0\"\ntitulo = \"Equivalência JSON/TOML\"\n\n[[paginas_def]]\nid = \"p1\"\n\n[[sequencia]]\npagina_def = \"p1\"\nrepeticao = \"unica\"\n";
     let doc_json = normordis_pdf::parse_ndt(json).expect("JSON parse failed");
     let doc_toml = normordis_pdf::parse_ndt(toml).expect("TOML parse failed");
-    assert_eq!(doc_json.ndt, doc_toml.ndt);
-    let out_json = doc_json.output.as_ref().and_then(|o| o.standard.as_deref());
-    let out_toml = doc_toml.output.as_ref().and_then(|o| o.standard.as_deref());
-    assert_eq!(
-        out_json, out_toml,
-        "standard field must match between JSON and TOML"
-    );
+    assert_eq!(doc_json.ndt_version, doc_toml.ndt_version);
+    assert_eq!(doc_json.titulo, doc_toml.titulo);
 }
 
 #[test]
-fn v200_40_ndt_output_compression_best_renders() {
+fn v200_40_ndt_200_parse_minimal_ok() {
     let ndt = r#"{
-        "ndt": "2.0.0",
-        "output": { "compression": "best" },
-        "body": [{ "type": "paragraph", "text": "Comprimido." }]
+        "ndt_version": "2.0.0",
+        "schema_id": "urn:normordis:ndt:test",
+        "versao_ndt": "1.0.0",
+        "paginas_def": [{"id": "p1"}],
+        "sequencia": [{"pagina_def": "p1", "repeticao": "unica"}]
     }"#;
-    let data = r#"{"ndt_data":"1.0.0","data":{}}"#;
-    let bytes = DocumentBuilder::new("NDT compression")
-        .push_ndt(ndt, data)
-        .expect("push_ndt failed")
-        .render_to_bytes()
-        .expect("render failed");
-    assert!(bytes.starts_with(b"%PDF-"));
+    let doc = normordis_pdf::parse_ndt(ndt).expect("NDT 2.0.0 minimal must parse");
+    assert_eq!(doc.ndt_version, "2.0.0");
+    assert_eq!(doc.paginas_def.len(), 1);
 }
 
 // ── 41–44 File size / PDF_BACKEND ────────────────────────────────────────────
@@ -584,17 +572,14 @@ fn v200_43_pdf_backend_constant_is_pdf_writer() {
 
 #[test]
 fn v200_44_ndt_signature_model_deserialises() {
+    // NdtSignature is a standalone exported type; test it directly.
+    use normordis_pdf::NdtSignature;
     let json = r#"{
-        "ndt": "2.0.0",
-        "signature": {
-            "field": { "x_mm": 120.0, "y_mm": 40.0, "width_mm": 70.0, "height_mm": 20.0, "page": 1, "label": "Assinatura" },
-            "reason": "Aprovado",
-            "location": "Lisboa"
-        },
-        "body": []
+        "field": { "x_mm": 120.0, "y_mm": 40.0, "width_mm": 70.0, "height_mm": 20.0, "page": 1, "label": "Assinatura" },
+        "reason": "Aprovado",
+        "location": "Lisboa"
     }"#;
-    let doc = normordis_pdf::parse_ndt(json).expect("parse failed");
-    let sig = doc.signature.as_ref().expect("signature must be present");
+    let sig: NdtSignature = serde_json::from_str(json).expect("NdtSignature parse failed");
     assert_eq!(sig.reason.as_deref(), Some("Aprovado"));
     assert_eq!(sig.location.as_deref(), Some("Lisboa"));
     let field = sig.field.as_ref().expect("field must be present");

@@ -4,7 +4,7 @@ use std::ptr;
 
 use crate::styles::DocumentStyle;
 use crate::template::{parse_ndt, parse_ndt_data, render as render_ndt_template};
-use crate::{DocumentBuilder, NormaxisPdfError};
+use crate::{DocumentBuilder, NormordisPdfError};
 
 /// Gera um PDF a partir de um JSON de configuração.
 /// Exemplo de JSON:
@@ -88,9 +88,9 @@ pub extern "C" fn generate_pdf_from_ndt(
     Box::into_raw(result)
 }
 
-fn create_pdf_from_ndt(ndt_json: &str, data_json: &str) -> Result<Vec<u8>, NormaxisPdfError> {
-    let doc = parse_ndt(ndt_json).map_err(|e| NormaxisPdfError::Template(e.to_string()))?;
-    let data = parse_ndt_data(data_json).map_err(|e| NormaxisPdfError::Template(e.to_string()))?;
+fn create_pdf_from_ndt(ndt_json: &str, data_json: &str) -> Result<Vec<u8>, NormordisPdfError> {
+    let doc = parse_ndt(ndt_json).map_err(|e| NormordisPdfError::Template(e.to_string()))?;
+    let data = parse_ndt_data(data_json).map_err(|e| NormordisPdfError::Template(e.to_string()))?;
 
     let title = doc
         .meta
@@ -99,7 +99,7 @@ fn create_pdf_from_ndt(ndt_json: &str, data_json: &str) -> Result<Vec<u8>, Norma
         .unwrap_or("Document");
     let style = DocumentStyle::default();
     let elements = render_ndt_template(&doc, &data, &style)
-        .map_err(|e| NormaxisPdfError::Template(e.to_string()))?;
+        .map_err(|e| NormordisPdfError::Template(e.to_string()))?;
 
     let mut builder = DocumentBuilder::new(title);
     for el in elements {
@@ -109,10 +109,10 @@ fn create_pdf_from_ndt(ndt_json: &str, data_json: &str) -> Result<Vec<u8>, Norma
 }
 
 // Função interna para criar o PDF (adapta ao teu código real)
-fn create_pdf_from_json(json: &str) -> Result<Vec<u8>, NormaxisPdfError> {
+fn create_pdf_from_json(json: &str) -> Result<Vec<u8>, NormordisPdfError> {
     // Parsing básico do JSON
     let config: serde_json::Value =
-        serde_json::from_str(json).map_err(|e| NormaxisPdfError::ParseError(e.to_string()))?;
+        serde_json::from_str(json).map_err(|e| NormordisPdfError::ParseError(e.to_string()))?;
 
     let title = config
         .get("title")

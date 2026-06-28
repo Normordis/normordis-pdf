@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    NormaxisPdfError, Result,
+    NormordisPdfError, Result,
     backend::pdf_writer_backend::PdfWriterBackend,
     backend::{FontRef, PdfBackend},
     compliance::ua::{AccessibilityConfig, StructTag, StructureTree, UaValidator},
@@ -367,7 +367,7 @@ impl Document {
 
     pub fn render_to_file(self, path: impl AsRef<std::path::Path>) -> Result<()> {
         let bytes = self.render_to_bytes()?;
-        std::fs::write(path, bytes).map_err(NormaxisPdfError::IoError)
+        std::fs::write(path, bytes).map_err(NormordisPdfError::IoError)
     }
 
     /// Render with signature placeholders and return a [`PreparedPdf`] ready
