@@ -6,8 +6,8 @@ pub mod resolver;
 pub mod validator;
 
 pub use data::NdtData;
-pub use model::{NdtDocument, NdtTemplateRecord, NdtTemplateSummary, TemplateStatus};
-pub use registry::{NdtRegistry, TemplateFilter};
+pub use model::NdtDocument;
+pub use registry::TemplateFilter;
 pub use renderer::render_template;
 
 pub use ndf_pipeline::{
@@ -16,7 +16,7 @@ pub use ndf_pipeline::{
 };
 mod ndf_pipeline;
 
-pub const ENGINE_NDT_VERSION: &str = "2.1.0";
+pub const ENGINE_NDT_VERSION: &str = "2.0.0";
 pub const ENGINE_NDT_DATA_VERSION: &str = "1.0.0";
 
 pub use resolver::{RuntimeContext, resolve_runtime_fields};
@@ -28,18 +28,6 @@ use crate::styles::DocumentStyle;
 pub enum TemplateError {
     #[error("NDT version {template} incompatible with engine {engine}")]
     IncompatibleVersion { template: String, engine: String },
-    #[error("Required placeholder '{name}' is missing")]
-    MissingPlaceholder { name: String },
-    #[error("Placeholder '{name}' invalid: {reason}")]
-    InvalidPlaceholder { name: String, reason: String },
-    #[error("Placeholder '{name}' type mismatch: expected {expected}, got {got}")]
-    PlaceholderTypeMismatch {
-        name: String,
-        expected: String,
-        got: String,
-    },
-    #[error("Zone '{name}' not found")]
-    ZoneNotFound { name: String },
     #[error("Include not found: {path}")]
     IncludeNotFound { path: String },
     #[error("JSON error: {0}")]
@@ -52,11 +40,6 @@ pub enum TemplateError {
 
 /// Parse an NDT template string.  Auto-detects format: strings starting with
 /// `{` are parsed as JSON; everything else is treated as TOML.
-///
-/// # Errors
-///
-/// Returns [`TemplateError::JsonError`] or [`TemplateError::TomlError`] on
-/// parse failure.
 pub fn parse_ndt(input: &str) -> Result<NdtDocument, TemplateError> {
     if input.trim_start().starts_with('{') {
         serde_json::from_str(input).map_err(TemplateError::JsonError)
@@ -86,9 +69,6 @@ pub fn serialize_ndt_toml(doc: &NdtDocument) -> Result<String, TemplateError> {
 }
 
 /// Validate that the template version is compatible with this engine.
-///
-/// Accepts any MAJOR ≤ engine MAJOR (forward compatibility: older templates
-/// always work; future templates may introduce unknown fields that are ignored).
 pub fn check_version_compatibility(template_version: &str) -> Result<(), TemplateError> {
     let engine_major: u32 = ENGINE_NDT_VERSION
         .split('.')
@@ -111,14 +91,7 @@ pub fn check_version_compatibility(template_version: &str) -> Result<(), Templat
     }
 }
 
-/// Full pipeline: parse NDT + validate placeholders + render to elements.
-///
-/// This is the function called by `DocumentBuilder::push_ndt`.
-///
-/// # Errors
-///
-/// Returns [`TemplateError`] on parse failure, version mismatch,
-/// placeholder validation failure, or zone-not-found errors.
+/// Full pipeline: parse NDT + render to elements.
 pub fn render(
     template_json: &str,
     data_json: &str,
@@ -126,12 +99,6 @@ pub fn render(
 ) -> Result<Vec<Box<dyn Element>>, TemplateError> {
     let doc = parse_ndt(template_json)?;
     let data = parse_ndt_data(data_json)?;
-
-    check_version_compatibility(&doc.ndt)?;
-
-    if let Some(placeholders) = &doc.placeholders {
-        validator::validate(placeholders, &data)?;
-    }
-
+    check_version_compatibility(&doc.ndt_version)?;
     render_template(&doc, &data, style)
 }

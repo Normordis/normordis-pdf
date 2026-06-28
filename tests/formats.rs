@@ -1,6 +1,6 @@
 use normordis_pdf::ndf::jcs;
 use normordis_pdf::{
-    Actor, AuditEvent, CompileOptions, EventType, NcrtfImage, NcrtfMark, NdfRevision,
+    Actor, AuditEvent, CompileOptions, EventType, NcrtfMark, NdfRevision,
     canonical_hash, compile_ndt, parse_ncrtf, parse_ndf, render_ndf, verify_ndf,
 };
 use serde_json::json;
@@ -8,7 +8,19 @@ use serde_json::json;
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 fn minimal_ndt() -> &'static str {
-    r#"{"ndt":"1.1.0","meta":{"title":"Test Document"},"body":[{"type":"paragraph","text":"Hello {{name}}."}]}"#
+    r#"{
+        "ndt_version": "2.0.0",
+        "schema_id": "urn:normordis:ndt:test",
+        "versao_ndt": "1.0.0",
+        "titulo": "Test Document",
+        "paginas_def": [{
+            "id": "pagina1",
+            "graficos": [
+                {"tipo": "texto_fixo", "conteudo": "Hello {{name}}.", "posicao": {"x": 10, "y": 10}}
+            ]
+        }],
+        "sequencia": [{"pagina_def": "pagina1", "repeticao": "unica"}]
+    }"#
 }
 
 fn minimal_data_json() -> &'static str {
@@ -125,12 +137,17 @@ fn fmt_11_compile_ndt_json_ok() {
 #[test]
 fn fmt_12_compile_ndt_toml_ok() {
     let toml = r#"
-ndt = "1.1.0"
-[meta]
-title = "TOML Doc"
-[[body]]
-type = "paragraph"
-text = "Static TOML."
+ndt_version = "2.0.0"
+schema_id = "urn:normordis:ndt:test"
+versao_ndt = "1.0.0"
+titulo = "TOML Doc"
+
+[[paginas_def]]
+id = "pagina1"
+
+[[sequencia]]
+pagina_def = "pagina1"
+repeticao = "unica"
 "#;
     let data: normordis_pdf::template::NdtData =
         serde_json::from_str(r#"{"ndt_data":"1.0.0","data":{}}"#).unwrap();
@@ -156,21 +173,16 @@ fn fmt_13_compile_ndt_resolves_placeholders() {
     );
 }
 
-#[test]
-fn fmt_14_compile_ndt_missing_placeholder_errors() {
-    let ndt = r#"{"ndt":"1.1.0","placeholders":{"required_field":{"required":true}},"body":[]}"#;
-    let empty_data: normordis_pdf::template::NdtData =
-        serde_json::from_str(r#"{"ndt_data":"1.0.0","data":{}}"#).unwrap();
-    let result = compile_ndt(ndt, &empty_data, CompileOptions::default());
-    assert!(
-        result.is_err(),
-        "missing required placeholder must return Err"
-    );
-}
 
 #[test]
 fn fmt_15_compile_ndt_validate_resolved_false_allows_remaining() {
-    let ndt = r#"{"ndt":"1.1.0","body":[{"type":"paragraph","text":"{{missing}}"}]}"#;
+    let ndt = r#"{
+        "ndt_version": "2.0.0",
+        "schema_id": "urn:normordis:ndt:test",
+        "versao_ndt": "1.0.0",
+        "paginas_def": [{"id": "p1", "graficos": [{"tipo": "texto_fixo", "conteudo": "{{missing}}", "posicao": {"x": 0, "y": 0}}]}],
+        "sequencia": [{"pagina_def": "p1", "repeticao": "unica"}]
+    }"#;
     let empty_data: normordis_pdf::template::NdtData =
         serde_json::from_str(r#"{"ndt_data":"1.0.0","data":{}}"#).unwrap();
     let opts = CompileOptions {
@@ -459,41 +471,38 @@ fn fmt_33_revised_content_hash_differs_from_original() {
 // ── 34–42: NCRTF ─────────────────────────────────────────────────────────────
 
 #[test]
-fn fmt_34_parse_ncrtf_130_ok() {
+fn fmt_34_parse_ncrtf_200_ok() {
     let json = r#"{
-        "ncrtf": "1.3.0",
-        "blocks": [
+        "ncrtf_version": "2.0.0",
+        "content": [
             {
                 "type": "paragraph",
-                "children": [
+                "content": [
                     {"type": "text", "text": "Hello"},
-                    {"type": "footnote_ref", "number": 1},
                     {"type": "hard_break"}
                 ]
             }
         ]
     }"#;
     let doc = parse_ncrtf(json);
-    assert!(
-        doc.is_ok(),
-        "parse_ncrtf 1.3.0 must return Ok: {:?}",
-        doc.err()
-    );
-    assert_eq!(doc.unwrap().ncrtf, "1.3.0");
+    assert!(doc.is_ok(), "parse_ncrtf 2.0.0 must return Ok: {:?}", doc.err());
+    assert_eq!(doc.unwrap().ncrtf_version, "2.0.0");
 }
 
 #[test]
-fn fmt_35_footnote_ref_inline_deserializes() {
-    use normordis_pdf::richtext::model::Inline;
-    let json = r#"{"ncrtf":"1.3.0","blocks":[{"type":"paragraph","children":[{"type":"footnote_ref","number":3}]}]}"#;
+fn fmt_35_link_inline_deserializes() {
+    use normordis_pdf::richtext::model::{Block, Inline};
+    let json = r#"{
+        "ncrtf_version": "2.0.0",
+        "content": [{"type":"paragraph","content":[
+            {"type":"link","href":"https://example.com","content":[{"type":"text","text":"clique"}]}
+        ]}]
+    }"#;
     let doc = parse_ncrtf(json).unwrap();
-    let block = &doc.blocks[0];
-    if let normordis_pdf::richtext::model::Block::Paragraph(p) = block {
+    if let Block::Paragraph(p) = &doc.content[0] {
         assert!(
-            p.children
-                .iter()
-                .any(|i| matches!(i, Inline::FootnoteRef(n) if n.number == 3)),
-            "FootnoteRef number=3 must be deserialised"
+            p.content.iter().any(|i| matches!(i, Inline::Link(_))),
+            "link inline must deserialise"
         );
     } else {
         panic!("expected paragraph block");
@@ -502,41 +511,33 @@ fn fmt_35_footnote_ref_inline_deserializes() {
 
 #[test]
 fn fmt_36_soft_hyphen_preserved_in_text_node() {
-    let json = r#"{"ncrtf":"1.3.0","blocks":[{"type":"paragraph","children":[{"type":"text","text":"im­ple­men­ta­ção"}]}]}"#;
+    let json = r#"{"ncrtf_version":"2.0.0","content":[{"type":"paragraph","content":[{"type":"text","text":"im­ple­men­ta­ção"}]}]}"#;
     let doc = parse_ncrtf(json).unwrap();
     use normordis_pdf::richtext::model::{Block, Inline};
-    if let Block::Paragraph(p) = &doc.blocks[0] {
-        if let Inline::Text(t) = &p.children[0] {
-            assert!(
-                t.text.contains('\u{00AD}'),
-                "soft hyphen U+00AD must be preserved"
-            );
+    if let Block::Paragraph(p) = &doc.content[0] {
+        if let Inline::Text(t) = &p.content[0] {
+            assert!(t.text.contains('\u{00AD}'), "soft hyphen U+00AD must be preserved");
         }
     }
 }
 
 #[test]
-fn fmt_37_validate_src_data_uri_ok() {
-    let img = NcrtfImage {
-        src: "data:image/png;base64,abc123".into(),
-        alt: None,
-        caption: None,
-        alignment: None,
-        width_percent: None,
-    };
-    assert!(img.validate_src().is_ok());
+fn fmt_37_image_block_requires_alt() {
+    let json = r#"{"ncrtf_version":"2.0.0","content":[{"type":"image","ref":"assets/logo.png","alt":"Logótipo"}]}"#;
+    let doc = parse_ncrtf(json).unwrap();
+    use normordis_pdf::richtext::model::Block;
+    if let Block::Image(img) = &doc.content[0] {
+        assert_eq!(img.image_ref, "assets/logo.png");
+        assert_eq!(img.alt, "Logótipo");
+    } else {
+        panic!("expected image block");
+    }
 }
 
 #[test]
-fn fmt_38_validate_src_https_errors() {
-    let img = NcrtfImage {
-        src: "https://example.com/logo.png".into(),
-        alt: None,
-        caption: None,
-        alignment: None,
-        width_percent: None,
-    };
-    assert!(img.validate_src().is_err(), "https:// src must return Err");
+fn fmt_38_image_block_without_alt_fails() {
+    let json = r#"{"ncrtf_version":"2.0.0","content":[{"type":"image","ref":"assets/logo.png"}]}"#;
+    assert!(parse_ncrtf(json).is_err(), "image without alt must fail to parse");
 }
 
 #[test]
@@ -552,15 +553,14 @@ fn fmt_40_mark_parameterised_color_mark_type() {
 }
 
 #[test]
-fn fmt_41_ncrtf_to_elements_with_footnote_ref_no_panic() {
+fn fmt_41_ncrtf_to_elements_with_blockquote_no_panic() {
     use normordis_pdf::richtext::ncrtf_to_elements;
     use normordis_pdf::styles::DocumentStyle;
     let json = r#"{
-        "ncrtf": "1.3.0",
-        "blocks": [
-            {"type": "paragraph", "children": [
-                {"type": "text", "text": "See note"},
-                {"type": "footnote_ref", "number": 1}
+        "ncrtf_version": "2.0.0",
+        "content": [
+            {"type": "blockquote", "content": [
+                {"type": "text", "text": "Texto em destaque"}
             ]}
         ]
     }"#;
@@ -571,21 +571,18 @@ fn fmt_41_ncrtf_to_elements_with_footnote_ref_no_panic() {
 }
 
 #[test]
-fn fmt_42_ncrtf_meta_is_separate_from_ndt_meta() {
-    // Verify at the type level that NcrtfMeta and NdtMeta are different structs.
-    // NcrtfMeta has `custom: Option<HashMap<String, Value>>`
-    // NdtMeta has `compat_mode: Option<u32>` — field not present in NcrtfMeta.
-    use normordis_pdf::richtext::model::DocumentMeta;
-    use normordis_pdf::template::model::NdtMeta;
+fn fmt_42_ncrtf_and_ndt_are_distinct_models() {
+    // NcrtfDocument uses ncrtf_version; NdtDocument uses ndt_version + titulo (PT).
+    let doc = parse_ncrtf(r#"{"ncrtf_version":"2.0.0","content":[]}"#).unwrap();
+    assert_eq!(doc.ncrtf_version, "2.0.0");
 
-    let ncrtf_meta: DocumentMeta =
-        serde_json::from_str(r#"{"title":"Editorial only","author":"Editor"}"#).unwrap();
-    assert_eq!(ncrtf_meta.title.as_deref(), Some("Editorial only"));
-
-    let ndt_meta: NdtMeta =
-        serde_json::from_str(r#"{"title":"Template title","compat_mode":16}"#).unwrap();
-    assert_eq!(ndt_meta.compat_mode, Some(16));
-    // The two structs exist independently — compiles only if they are separate types.
-    drop(ncrtf_meta);
-    drop(ndt_meta);
+    let ndt_doc = normordis_pdf::parse_ndt(r#"{
+        "ndt_version": "2.0.0",
+        "schema_id": "urn:normordis:ndt:test",
+        "versao_ndt": "1.0.0",
+        "titulo": "Template title",
+        "paginas_def": [{"id": "p1"}],
+        "sequencia": [{"pagina_def": "p1", "repeticao": "unica"}]
+    }"#).unwrap();
+    assert_eq!(ndt_doc.titulo.as_deref(), Some("Template title"));
 }

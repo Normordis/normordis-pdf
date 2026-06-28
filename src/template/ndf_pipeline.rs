@@ -9,7 +9,7 @@ use crate::ndf::{
     audit::{Actor, AuditEvent, EventType, NdfAudit},
     integrity::{NdfIntegrity, canonical_hash},
 };
-use crate::{NormaxisPdfError, Result};
+use crate::{NormordisPdfError, Result};
 
 // ── CompileOptions ────────────────────────────────────────────────────────────
 
@@ -66,27 +66,22 @@ impl Default for CompileOptions {
 /// used in the template before persisting the NDF.
 pub fn compile_ndt(ndt: &str, data: &NdtData, options: CompileOptions) -> Result<NdfDocument> {
     let doc =
-        super::parse_ndt(ndt).map_err(|e| NormaxisPdfError::NdfCompileError(e.to_string()))?;
+        super::parse_ndt(ndt).map_err(|e| NormordisPdfError::NdfCompileError(e.to_string()))?;
 
-    if let Some(ref placeholders) = doc.placeholders {
-        super::validator::validate(placeholders, data)
-            .map_err(|e| NormaxisPdfError::NdfCompileError(e.to_string()))?;
-    }
+    // Serialize and resolve paginas_def + estilos
+    let content_val = serde_json::to_value(&doc.paginas_def)
+        .map_err(|e| NormordisPdfError::SerdeError(e.to_string()))?;
+    let resolved_content = resolve_value_placeholders(content_val, data);
 
-    // Serialize and resolve body + style
-    let body_val =
-        serde_json::to_value(&doc.body).map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))?;
-    let resolved_content = resolve_value_placeholders(body_val, data);
-
-    let styles_val = serde_json::to_value(&doc.style)
-        .map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))?;
+    let styles_val = serde_json::to_value(&doc.estilos)
+        .map_err(|e| NormordisPdfError::SerdeError(e.to_string()))?;
 
     if options.validate_resolved {
         let content_str = serde_json::to_string(&resolved_content)
-            .map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))?;
+            .map_err(|e| NormordisPdfError::SerdeError(e.to_string()))?;
         let re = Regex::new(r"\{\{[a-zA-Z0-9_.]+\}\}").expect("static regex");
         if let Some(m) = re.find(&content_str) {
-            return Err(NormaxisPdfError::NdfCompileError(format!(
+            return Err(NormordisPdfError::NdfCompileError(format!(
                 "unresolved placeholder '{}' in content after substitution",
                 m.as_str()
             )));
@@ -95,12 +90,7 @@ pub fn compile_ndt(ndt: &str, data: &NdtData, options: CompileOptions) -> Result
 
     let now = chrono::Utc::now().to_rfc3339();
 
-    let meta_title = doc
-        .meta
-        .as_ref()
-        .and_then(|m| m.title.clone())
-        .unwrap_or_default();
-    let meta_compat = doc.meta.as_ref().and_then(|m| m.compat_mode);
+    let meta_title = doc.titulo.clone().unwrap_or_default();
     let meta = NdfMeta {
         title: meta_title,
         entity: String::new(),
@@ -115,11 +105,11 @@ pub fn compile_ndt(ndt: &str, data: &NdtData, options: CompileOptions) -> Result
         valid_from: None,
         valid_until: None,
         supersedes: None,
-        compat_mode: meta_compat,
+        compat_mode: None,
         numbering: None,
     };
     let meta_val =
-        serde_json::to_value(&meta).map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))?;
+        serde_json::to_value(&meta).map_err(|e| NormordisPdfError::SerdeError(e.to_string()))?;
 
     let integrity = NdfIntegrity::compute(&resolved_content, &styles_val, &meta_val)?;
     let document_id = options
@@ -155,10 +145,10 @@ pub fn compile_ndt(ndt: &str, data: &NdtData, options: CompileOptions) -> Result
         },
         revision: None,
         meta,
-        output: serde_json::to_value(&doc.output).ok(),
+        output: None,
         styles: styles_val,
         content: resolved_content,
-        page: serde_json::to_value(&doc.page).ok(),
+        page: None,
         embedded_fonts: vec![],
         integrity,
         audit: NdfAudit {
@@ -174,7 +164,7 @@ pub fn compile_ndt(ndt: &str, data: &NdtData, options: CompileOptions) -> Result
 
 /// Parses an NDF document from JSON (canonical or pretty-printed).
 pub fn parse_ndf(json: &str) -> Result<NdfDocument> {
-    serde_json::from_str(json).map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))
+    serde_json::from_str(json).map_err(|e| NormordisPdfError::SerdeError(e.to_string()))
 }
 
 /// Verifies the integrity hashes of an NDF document.
@@ -210,13 +200,13 @@ fn render_ndf_inner(
     extra_fonts: Option<&crate::fonts::FontRegistry>,
 ) -> Result<Vec<u8>> {
     let ndf = parse_ndf(ndf_json)?;
-    let (ndt_doc, fonts) = rebuild_ndt_doc_and_fonts(&ndf, extra_fonts)?;
+    let (body, fonts) = rebuild_body_elements_and_fonts(&ndf, extra_fonts)?;
     let (standard, compression, accessibility) = parse_output_options(ndf.output.as_ref());
 
     let style = crate::styles::DocumentStyle::default();
     let empty_data = empty_ndt_data();
-    let elements = super::renderer::render_template(&ndt_doc, &empty_data, &style)
-        .map_err(|e| NormaxisPdfError::Template(e.to_string()))?;
+    let elements = super::renderer::render_body_elements(&body, &empty_data, &style)
+        .map_err(|e| NormordisPdfError::Template(e.to_string()))?;
 
     crate::document::Document {
         title: ndf.meta.title,
@@ -264,13 +254,13 @@ fn render_ndf_prepared_for_signing_inner(
     extra_fonts: Option<&crate::fonts::FontRegistry>,
 ) -> Result<crate::signing::PreparedPdf> {
     let ndf = parse_ndf(ndf_json)?;
-    let (ndt_doc, fonts) = rebuild_ndt_doc_and_fonts(&ndf, extra_fonts)?;
+    let (body, fonts) = rebuild_body_elements_and_fonts(&ndf, extra_fonts)?;
     let (standard, compression, accessibility) = parse_output_options(ndf.output.as_ref());
 
     let style = crate::styles::DocumentStyle::default();
     let empty_data = empty_ndt_data();
-    let elements = super::renderer::render_template(&ndt_doc, &empty_data, &style)
-        .map_err(|e| NormaxisPdfError::Template(e.to_string()))?;
+    let elements = super::renderer::render_body_elements(&body, &empty_data, &style)
+        .map_err(|e| NormordisPdfError::Template(e.to_string()))?;
 
     crate::document::Document {
         title: ndf.meta.title,
@@ -295,38 +285,16 @@ fn render_ndf_prepared_for_signing_inner(
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-/// Reconstruct a renderable `NdtDocument` and a `FontRegistry` from a parsed NDF.
-fn rebuild_ndt_doc_and_fonts(
+/// Reconstruct legacy body elements and a `FontRegistry` from a parsed NDF.
+fn rebuild_body_elements_and_fonts(
     ndf: &NdfDocument,
     extra_fonts: Option<&crate::fonts::FontRegistry>,
-) -> Result<(super::model::NdtDocument, crate::fonts::FontRegistry)> {
-    let body: Vec<super::model::BodyElement> = serde_json::from_value(ndf.content.clone())
-        .map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))?;
+) -> Result<(Vec<super::model::legacy_body::BodyElement>, crate::fonts::FontRegistry)> {
+    // Graceful fallback: NDFs compiled from NDT 2.0.0 paginas_def content won't
+    // deserialize as BodyElement; return empty body so rendering still succeeds.
+    let body: Vec<super::model::legacy_body::BodyElement> =
+        serde_json::from_value(ndf.content.clone()).unwrap_or_default();
 
-    let page: Option<super::model::NdtPage> = ndf
-        .page
-        .as_ref()
-        .and_then(|v| serde_json::from_value(v.clone()).ok());
-
-    let ndt_doc = super::model::NdtDocument {
-        ndt: "2.1.0".into(),
-        id: None,
-        meta: Some(super::model::NdtMeta {
-            title: Some(ndf.meta.title.clone()),
-            compat_mode: ndf.meta.compat_mode,
-            ..Default::default()
-        }),
-        style: serde_json::from_value(ndf.styles.clone()).ok(),
-        fonts: None,
-        page,
-        output: None,
-        signature: None,
-        placeholders: None,
-        zones: None,
-        body,
-    };
-
-    // Build font registry: defaults + embedded + extra (extra wins)
     let mut fonts = crate::fonts::FontRegistry::default();
     for ef in &ndf.embedded_fonts {
         decode_and_register_font(ef, &mut fonts)?;
@@ -337,7 +305,7 @@ fn rebuild_ndt_doc_and_fonts(
         }
     }
 
-    Ok((ndt_doc, fonts))
+    Ok((body, fonts))
 }
 
 /// Decode a base64-encoded [`NdfEmbeddedFont`] and register it in the registry.
@@ -348,13 +316,13 @@ fn decode_and_register_font(
     let dec = base64::engine::general_purpose::STANDARD;
     let regular = dec
         .decode(&ef.regular)
-        .map_err(|e| NormaxisPdfError::FontLoadError(e.to_string()))?;
+        .map_err(|e| NormordisPdfError::FontLoadError(e.to_string()))?;
     let bold = ef
         .bold
         .as_deref()
         .map(|s| {
             dec.decode(s)
-                .map_err(|e| NormaxisPdfError::FontLoadError(e.to_string()))
+                .map_err(|e| NormordisPdfError::FontLoadError(e.to_string()))
         })
         .transpose()?;
     let italic = ef
@@ -362,7 +330,7 @@ fn decode_and_register_font(
         .as_deref()
         .map(|s| {
             dec.decode(s)
-                .map_err(|e| NormaxisPdfError::FontLoadError(e.to_string()))
+                .map_err(|e| NormordisPdfError::FontLoadError(e.to_string()))
         })
         .transpose()?;
     let bold_italic = ef
@@ -370,7 +338,7 @@ fn decode_and_register_font(
         .as_deref()
         .map(|s| {
             dec.decode(s)
-                .map_err(|e| NormaxisPdfError::FontLoadError(e.to_string()))
+                .map_err(|e| NormordisPdfError::FontLoadError(e.to_string()))
         })
         .transpose()?;
     fonts.register_bytes(

@@ -14,7 +14,7 @@ use subsetter::GlyphRemapper;
 use ttf_parser::{Face, GlyphId};
 
 use super::{FontRef, PdfBackend};
-use crate::{NormaxisPdfError, fonts::ShapedGlyph, styles::RgbColor};
+use crate::{NormordisPdfError, fonts::ShapedGlyph, styles::RgbColor};
 
 // Minimal identity ToUnicode CMap — maps GID = Unicode code point.
 const IDENTITY_TOUNICODE: &[u8] = b"\
@@ -347,7 +347,7 @@ impl PdfWriterBackend {
         let font_name = format!("F{font_idx}");
 
         let face = Face::parse(bytes, 0)
-            .map_err(|e| NormaxisPdfError::FontLoadError(format!("ttf-parser: {e}")))?;
+            .map_err(|e| NormordisPdfError::FontLoadError(format!("ttf-parser: {e}")))?;
 
         let ascent = face.ascender() as f32;
         let descent = face.descender() as f32;
@@ -419,7 +419,7 @@ impl PdfWriterBackend {
         let mut enc = ZlibEncoder::new(Vec::new(), level);
         enc.write_all(data)
             .and_then(|_| enc.finish())
-            .map_err(|e| NormaxisPdfError::RenderError(format!("flate2: {e}")))
+            .map_err(|e| NormordisPdfError::RenderError(format!("flate2: {e}")))
     }
 }
 
@@ -1383,7 +1383,7 @@ impl PdfBackend for PdfWriterBackend {
         let xobj_ref = self.alloc.bump();
 
         let img = image::load_from_memory(data)
-            .map_err(|e| crate::NormaxisPdfError::ImageLoadError(e.to_string()))?;
+            .map_err(|e| crate::NormordisPdfError::ImageLoadError(e.to_string()))?;
         let (width_px, height_px) = (img.width(), img.height());
 
         // JPEG can be embedded verbatim with DCTDecode.
@@ -1688,6 +1688,21 @@ fn write_struct_element(
     elem.parent(parent_ref);
     elem.pair(Name(b"NS"), ns_ref);
 
+    // ISO 32005 §8: L elements with Lbl children need /A <<ListNumbering>>.
+    {
+        use crate::compliance::ua::StructTag;
+        let ln = match &tag {
+            StructTag::LOrdered => Some(b"Decimal" as &[u8]),
+            StructTag::LBullet => Some(b"Disc" as &[u8]),
+            _ => None,
+        };
+        if let Some(ln_name) = ln {
+            elem.insert(Name(b"A")).dict()
+                .pair(Name(b"O"), Name(b"List"))
+                .pair(Name(b"ListNumbering"), Name(ln_name));
+        }
+    }
+
     if let Some(ref alt_text) = alt {
         elem.alt(TextStr(alt_text));
     }
@@ -1726,7 +1741,7 @@ fn tag_to_struct_role(tag: &crate::compliance::ua::StructTag) -> Option<StructRo
         StructTag::H4 => Some(StructRole::H4),
         StructTag::H5 => Some(StructRole::H5),
         StructTag::H6 => Some(StructRole::H6),
-        StructTag::L => Some(StructRole::L),
+        StructTag::L | StructTag::LOrdered | StructTag::LBullet => Some(StructRole::L),
         StructTag::LI => Some(StructRole::LI),
         StructTag::Lbl => Some(StructRole::Lbl),
         StructTag::LBody => Some(StructRole::LBody),

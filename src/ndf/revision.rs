@@ -5,7 +5,7 @@ use super::{
     audit::{Actor, AuditEvent, EventType, NdfAudit},
     integrity::NdfIntegrity,
 };
-use crate::NormaxisPdfError;
+use crate::NormordisPdfError;
 
 /// Creates a revised NDF from an existing one.
 ///
@@ -31,13 +31,13 @@ impl NdfRevision {
             .unwrap_or(2);
 
         if revision_seq < 2 {
-            return Err(NormaxisPdfError::NdfRevisionError(
+            return Err(NormordisPdfError::NdfRevisionError(
                 "revision_seq must be >= 2 — original is implicitly seq 1".into(),
             ));
         }
 
         let meta_val = serde_json::to_value(&original.meta)
-            .map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))?;
+            .map_err(|e| NormordisPdfError::SerdeError(e.to_string()))?;
         let integrity = NdfIntegrity::compute(&new_content, &original.styles, &meta_val)?;
 
         let now = chrono::Utc::now().to_rfc3339();

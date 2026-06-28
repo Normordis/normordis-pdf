@@ -35,7 +35,7 @@ Três modelos de composição, todos combináveis num único documento:
 ```toml
 # Cargo.toml
 [dependencies]
-normordis-pdf = "1.0.0"
+normordis-pdf = "3.0.0"
 ```
 
 ### Documento Flow
@@ -71,7 +71,7 @@ Three composition models, all mixable in a single document:
 ```toml
 # Cargo.toml
 [dependencies]
-normordis-pdf = "1.0.0"
+normordis-pdf = "3.0.0"
 ```
 
 ### Flow document
@@ -88,17 +88,17 @@ let pdf = DocumentBuilder::new("Relatório Mensal")
 std::fs::write("output.pdf", pdf)?;
 ```
 
-### NCRTF rich text
+### NCRTF v2.0.0 rich text
 
 ```rust
 use normordis_pdf::DocumentBuilder;
 
 let ncrtf = r#"{
-  "ncrtf": "1.0",
-  "blocks": [
-    {"type":"heading","level":1,"children":[{"type":"text","text":"Título","marks":[]}]},
-    {"type":"paragraph","alignment":"justify","children":[
-      {"type":"text","text":"Texto com ","marks":[]},
+  "ncrtf_version": "2.0.0",
+  "content": [
+    {"type":"heading","level":1,"content":[{"type":"text","text":"Título"}]},
+    {"type":"paragraph","alignment":"justify","content":[
+      {"type":"text","text":"Texto com "},
       {"type":"text","text":"negrito","marks":["bold"]},
       {"type":"text","text":" e itálico.","marks":["italic"]}
     ]}
@@ -110,7 +110,7 @@ let pdf = DocumentBuilder::new("Documento")
     .render_to_bytes()?;
 ```
 
-### NDT template
+### NDT v2.0.0 template
 
 ```rust
 use normordis_pdf::DocumentBuilder;
@@ -122,9 +122,7 @@ let data = serde_json::json!({
     "data": {
         "entidade": "Câmara Municipal de Exemplo",
         "numero": "2025/001",
-        "data": "25 de Abril de 2025",
-        "assunto": "Resposta a pedido de informação",
-        "mensagem": "{\"ncrtf\":\"1.0\",\"blocks\":[{\"type\":\"paragraph\",\"alignment\":\"justify\",\"children\":[{\"type\":\"text\",\"text\":\"Informamos que o pedido foi recebido.\",\"marks\":[]}]}]}"
+        "data": "25 de Abril de 2025"
     }
 }).to_string();
 
@@ -156,19 +154,19 @@ let pdf = DocumentBuilder::new("Ofício")
 | Image at absolute position | `DocumentBuilder::fixed_image(box, bytes, fit)` |
 | Decorative line | `DocumentBuilder::fixed_line(x1, y1, x2, y2, color)` |
 
-### NCRTF v1.0 — rich text format
+### NCRTF v2.0.0 — rich text format
 
-NCRTF (NORMAXIS Canonical Rich Text Format) is a JSON schema for inline-styled paragraphs. It is the interchange format between editors (such as `@normaxis/nx-doc`) and this renderer.
+NCRTF (NORMORDIS Canonical Rich Text Format) is a JSON schema for inline-styled paragraphs. It is the interchange format between editors (such as `@normaxis/nx-doc`) and this renderer.
 
 ```json
 {
-  "ncrtf": "1.0",
-  "blocks": [
+  "ncrtf_version": "2.0.0",
+  "content": [
     {
       "type": "paragraph",
       "alignment": "justify",
-      "children": [
-        {"type": "text", "text": "Normal, ", "marks": []},
+      "content": [
+        {"type": "text", "text": "Normal, "},
         {"type": "text", "text": "bold", "marks": ["bold"]},
         {"type": "text", "text": " and italic.", "marks": ["italic"]}
       ]
@@ -176,39 +174,43 @@ NCRTF (NORMAXIS Canonical Rich Text Format) is a JSON schema for inline-styled p
     {
       "type": "list",
       "list_type": "bullet",
-      "children": [
-        {"indent": 0, "children": [{"type": "text", "text": "Item", "marks": []}]}
+      "content": [
+        {"type": "list_item", "content": [{"type": "text", "text": "Item"}]}
       ]
     }
   ]
 }
 ```
 
-Supported block types: `paragraph`, `heading` (levels 1–4), `list` (bullet / ordered / checklist).  
-Supported inline marks: `bold`, `italic`, `underline`, `strikethrough`, `code`.
+Supported block types: `paragraph`, `heading` (levels 1–3), `list` (bullet / ordered / checklist), `blockquote`, `table`, `image`.  
+Supported inline marks: `bold`, `italic`, `underline`, `strikethrough`, `superscript`, `subscript`, `code`.
 
-### NDT v1.0.0 — document templates
+### NDT v2.0.0 — document templates
 
-NDT (NORMAXIS Document Template) is a JSON-driven template format for institutional documents. Templates define a layout schema; runtime data is injected at render time.
+NDT (NORMORDIS Document Template) is a JSON/TOML-driven template format for institutional documents. Templates define a positioned layout; runtime data is injected at render time.
 
 **Template file** (`*.ndt.json`):
 
 ```json
 {
-  "ndt": "1.0.0",
-  "meta": { "title": "Relatório", "description": "…" },
-  "placeholders": {
-    "entity_name": { "type": "string", "required": true },
-    "body":        { "type": "ncrtf",  "required": false }
-  },
-  "body": [
-    { "type": "heading", "text": "{{entity_name}}", "level": 1 },
+  "ndt_version": "2.0.0",
+  "schema_id": "urn:normordis:ndt:oficio-nacional",
+  "versao_ndt": "1.0.0",
+  "titulo": "Ofício Nacional",
+  "paginas_def": [
     {
-      "type": "conditional",
-      "condition": "body", "operator": "exists",
-      "then": [{ "type": "rich_text", "content": "{{body}}", "source": "placeholder" }],
-      "else": [{ "type": "paragraph", "text": "Sem conteúdo." }]
+      "id": "pagina-principal",
+      "graficos": [
+        {
+          "tipo": "texto_fixo",
+          "x_mm": 25, "y_mm": 20, "largura_mm": 160, "altura_mm": 10,
+          "conteudo": "{{entidade}}"
+        }
+      ]
     }
+  ],
+  "sequencia": [
+    {"pagina_def": "pagina-principal", "repeticao": "unica"}
   ]
 }
 ```
@@ -219,28 +221,13 @@ NDT (NORMAXIS Document Template) is a JSON-driven template format for institutio
 {
   "ndt_data": "1.0.0",
   "data": {
-    "entity_name": "Câmara Municipal de Exemplo",
-    "body": "{\"ncrtf\":\"1.0\",\"blocks\":[]}"
+    "entidade": "Câmara Municipal de Exemplo",
+    "numero": "2025/001"
   }
 }
 ```
 
-Supported body element types: `paragraph`, `heading`, `rich_text`, `table`, `list`, `image`,
-`spacer`, `horizontal_rule`, `page_break`, `fixed_text`, `fixed_image`, `fixed_line`,
-`fixed_box`, `zone_ref`, `conditional`, `repeat`, `include`.
-
-Supported conditional operators: `exists`, `empty`, `eq`, `neq`, `gt`, `lt`.
-
-## Bundled templates
-
-Ready-to-use NDT templates are provided under `examples/templates/`:
-
-| File | Description |
-|---|---|
-| `relatorio-simples.ndt.json` | Simple institutional report |
-| `oficio-nacional.ndt.json` | Official letter (ofício) |
-| `certidao-generica.ndt.json` | Generic certificate (certidão) |
-| `formulario-generico.ndt.json` | Generic two-section form |
+> **Note:** The NDT v2.0.0 positioned-layout renderer is currently in development. `push_ndt` parses and validates the template but returns an error until the renderer is complete.
 
 ## Examples
 
@@ -302,16 +289,15 @@ Common Word font names (`Arial`, `Calibri`, `Times New Roman`, `Cambria`, `Conso
 ## Version constants
 
 ```rust
-normordis_pdf::VERSION        // "1.0.0" — crate version
-normordis_pdf::NDT_VERSION    // "1.0.0" — NDT engine version
-normordis_pdf::NCRTF_VERSION  // "1.0"   — NCRTF parser version
+normordis_pdf::VERSION        // "3.0.0" — crate version
+normordis_pdf::NDT_VERSION    // "2.0.0" — NDT format version
+normordis_pdf::NCRTF_VERSION  // "2.0.0" — NCRTF format version
 ```
 
 ## API stability
 
-All public items re-exported from `normordis_pdf::*` are considered stable from v1.0.0 onwards. Internal modules (`normordis_pdf::template::*`, `normordis_pdf::richtext::*`, etc.) are not stable and may change between minor versions.
+All public items re-exported from `normordis_pdf::*` are considered stable. Internal modules (`normordis_pdf::template::*`, `normordis_pdf::richtext::*`, etc.) are not stable and may change between minor versions.
 
 ## License
 
 EUPL-1.2 — see [LICENSE](../../LICENSE) or [https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12).
-

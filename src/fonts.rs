@@ -3,7 +3,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{NormaxisPdfError, Result};
+use crate::{NormordisPdfError, Result};
 
 // ── FontFallbackChain ─────────────────────────────────────────────────────────
 
@@ -83,14 +83,14 @@ pub struct FontData {
 impl FontData {
     /// Load a font from a TTF/OTF file on disk.
     pub fn from_file(path: &Path) -> Result<Self> {
-        let bytes = std::fs::read(path).map_err(NormaxisPdfError::IoError)?;
+        let bytes = std::fs::read(path).map_err(NormordisPdfError::IoError)?;
         Self::from_bytes(bytes)
     }
 
     /// Parse a font from raw bytes (e.g., `include_bytes!`).
     pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
         let face = ttf_parser::Face::parse(&bytes, 0)
-            .map_err(|e| NormaxisPdfError::FontLoadError(e.to_string()))?;
+            .map_err(|e| NormordisPdfError::FontLoadError(e.to_string()))?;
         let units_per_em = face.units_per_em();
         Ok(Self {
             bytes,
@@ -200,7 +200,7 @@ impl FontVariants {
         bold_italic: Option<&Path>,
     ) -> Result<Self> {
         let read =
-            |p: &Path| -> Result<Vec<u8>> { std::fs::read(p).map_err(NormaxisPdfError::IoError) };
+            |p: &Path| -> Result<Vec<u8>> { std::fs::read(p).map_err(NormordisPdfError::IoError) };
         Self::from_bytes(
             name,
             read(regular)?,
@@ -338,7 +338,7 @@ impl FontRegistry {
             self.default_family = name.to_string();
             Ok(())
         } else {
-            Err(NormaxisPdfError::FontLoadError(format!(
+            Err(NormordisPdfError::FontLoadError(format!(
                 "font family '{name}' not registered"
             )))
         }
@@ -349,7 +349,7 @@ impl FontRegistry {
             self.monospace_family = Some(name.to_string());
             Ok(())
         } else {
-            Err(NormaxisPdfError::FontLoadError(format!(
+            Err(NormordisPdfError::FontLoadError(format!(
                 "font family '{name}' not registered"
             )))
         }
@@ -499,7 +499,7 @@ impl FontRegistry {
     pub fn load_dir(&mut self, dir: impl AsRef<Path>) -> Result<usize> {
         let dir = dir.as_ref();
         if !dir.is_dir() {
-            return Err(NormaxisPdfError::FontLoadError(format!(
+            return Err(NormordisPdfError::FontLoadError(format!(
                 "not a directory: {}",
                 dir.display()
             )));
@@ -507,8 +507,8 @@ impl FontRegistry {
 
         let mut map: HashMap<String, [Option<Vec<u8>>; 4]> = HashMap::new();
 
-        for entry in std::fs::read_dir(dir).map_err(NormaxisPdfError::IoError)? {
-            let path = entry.map_err(NormaxisPdfError::IoError)?.path();
+        for entry in std::fs::read_dir(dir).map_err(NormordisPdfError::IoError)? {
+            let path = entry.map_err(NormordisPdfError::IoError)?.path();
             let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
             if !matches!(ext.to_lowercase().as_str(), "ttf" | "otf") {
                 continue;
@@ -518,7 +518,7 @@ impl FontRegistry {
                 None => continue,
             };
             let (family, variant) = detect_variant_suffix(&stem);
-            let bytes = std::fs::read(&path).map_err(NormaxisPdfError::IoError)?;
+            let bytes = std::fs::read(&path).map_err(NormordisPdfError::IoError)?;
             let slot = map.entry(family).or_insert([None, None, None, None]);
             match variant.to_lowercase().as_str() {
                 "regular" => slot[0] = Some(bytes),
@@ -580,9 +580,9 @@ impl FontRegistry {
     pub fn from_dir(dir: &Path) -> crate::Result<FontRegistry> {
         let mut map: HashMap<String, [Option<Vec<u8>>; 4]> = HashMap::new();
 
-        let entries = std::fs::read_dir(dir).map_err(NormaxisPdfError::IoError)?;
+        let entries = std::fs::read_dir(dir).map_err(NormordisPdfError::IoError)?;
         for entry in entries {
-            let path = entry.map_err(NormaxisPdfError::IoError)?.path();
+            let path = entry.map_err(NormordisPdfError::IoError)?.path();
             let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
             if !matches!(ext.to_lowercase().as_str(), "ttf" | "otf") {
                 continue;
@@ -597,7 +597,7 @@ impl FontRegistry {
             };
             let family = stem[..dash].to_string();
             let variant = stem[dash + 1..].to_lowercase();
-            let bytes = std::fs::read(&path).map_err(NormaxisPdfError::IoError)?;
+            let bytes = std::fs::read(&path).map_err(NormordisPdfError::IoError)?;
             let slot = map.entry(family).or_insert([None, None, None, None]);
             match variant.as_str() {
                 "regular" => slot[0] = Some(bytes),
@@ -622,7 +622,7 @@ impl FontRegistry {
         }
 
         if families.is_empty() {
-            return Err(NormaxisPdfError::FontLoadError(format!(
+            return Err(NormordisPdfError::FontLoadError(format!(
                 "no valid font families found in {}",
                 dir.display()
             )));
@@ -683,7 +683,7 @@ impl FontRegistry {
         }
 
         if families.is_empty() {
-            return Err(NormaxisPdfError::FontLoadError(
+            return Err(NormordisPdfError::FontLoadError(
                 "no system fonts found".to_string(),
             ));
         }

@@ -37,14 +37,14 @@ Document::render_to_bytes()
     │   ├─ LayoutMode::Flow   → verifica overflow → element.render() → flow.advance()
     │   └─ LayoutMode::Fixed  → element.render()  (sem verificação, sem avanço)
     │
-    ├─ element.render() empurra printpdf::Op para ctx.ops
+    ├─ element.render() chama ctx.backend.draw_*() (trait PdfBackend)
     │
-    └─ no fim de cada página: PdfPage::new(width, height, ops)
+    └─ no fim de cada página: backend.new_page() / backend.finish()
 ```
 
 ### Sistema de coordenadas
 
-`printpdf` usa origem no canto inferior esquerdo. `y = 0` é o fundo da página; `y = altura_da_página` é o topo. Todas as medidas são em **milímetros** (`f64`).
+O backend usa origem no canto inferior esquerdo. `y = 0` é o fundo da página; `y = altura_da_página` é o topo. Todas as medidas são em **milímetros** (`f64`).
 
 O cursor de fluxo começa em `page_height - margin_top` e decresce à medida que o conteúdo é adicionado.
 
@@ -855,14 +855,18 @@ match builder.render_to_bytes() {
 
 Qualquer struct que implemente `Element` pode ser adicionada via `builder.push()`.
 
-```rust
-use normordis_pdf::{Element, LayoutMode, RenderContext};
+As chamadas de desenho fazem-se através de `ctx.backend` (trait `PdfBackend`) — **não existe `ctx.ops` nem integração directa com printpdf**. O `render()` retorna `RenderResult`, não `()`.
 
-struct MeuElemento {
+```rust
+use normordis_pdf::{Element, LayoutMode, RenderContext, elements::RenderResult};
+use normordis_pdf::styles::RgbColor;
+
+struct BannerColorido {
     altura_mm: f64,
+    cor: RgbColor,
 }
 
-impl Element for MeuElemento {
+impl Element for BannerColorido {
     // layout_mode() tem default LayoutMode::Flow — não é necessário substituir
     // para elementos de fluxo normais.
 
@@ -870,16 +874,18 @@ impl Element for MeuElemento {
         self.altura_mm
     }
 
-    fn render(&self, ctx: &mut RenderContext) -> normordis_pdf::Result<()> {
-        // Empurrar ops printpdf para ctx.ops, por exemplo:
-        // ctx.ops.push(printpdf::Op::SetFillColor { col: ... });
-        // ctx.ops.push(printpdf::Op::Rect { ... });
-        // ctx.ops.push(printpdf::Op::FillPath);
+    fn render(&self, ctx: &mut RenderContext) -> normordis_pdf::Result<RenderResult> {
+        let x = ctx.layout.content_x_mm;
+        let y = ctx.flow.cursor_y_mm - self.altura_mm;
+        let w = ctx.layout.content_width_mm;
+
+        // Desenhar um rectângulo preenchido via ctx.backend:
+        ctx.backend.draw_rect(x, y, w, self.altura_mm, &self.cor)?;
 
         // Avançar o cursor (obrigatório para elementos de fluxo):
         ctx.flow.advance(self.altura_mm);
 
-        Ok(())
+        Ok(RenderResult::done())
     }
 }
 ```
@@ -887,6 +893,8 @@ impl Element for MeuElemento {
 Para um elemento fixo, substituir `layout_mode()`:
 
 ```rust
+use normordis_pdf::FixedBox;
+
 fn layout_mode(&self) -> LayoutMode {
     LayoutMode::Fixed(FixedBox {
         x_mm: 10.0, y_mm: 50.0,
@@ -897,6 +905,25 @@ fn layout_mode(&self) -> LayoutMode {
 ```
 
 Num elemento fixo, **não chamar** `ctx.flow.advance()`.
+
+### Métodos disponíveis em `ctx.backend`
+
+| Método | Descrição |
+|---|---|
+| `draw_rect(x, y, w, h, fill)` | Rectângulo preenchido |
+| `draw_rect_stroked(x, y, w, h, fill, stroke, pt)` | Rectângulo com contorno |
+| `draw_line(x1, y1, x2, y2, width_pt, color)` | Linha |
+| `draw_text(text, x, y, size_pt, font_ref, color, spacing)` | Texto a posição absoluta |
+| `set_opacity(0.0–1.0)` | Opacidade (via ExtGState) |
+| `save_state()` / `restore_state()` | Guardar/restaurar estado gráfico |
+
+Atalhos em `ctx` (delegam para `ctx.backend`):
+
+| Método | Descrição |
+|---|---|
+| `ctx.draw_hline(x0, x1, y, width_pt, color)` | Linha horizontal |
+| `ctx.draw_vline(x, y0, y1, width_pt, color)` | Linha vertical |
+| `ctx.draw_text(text, x, y, size_pt, font_ref, color, spacing)` | Texto |
 
 ---
 

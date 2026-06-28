@@ -222,56 +222,41 @@ fn vertical_align_middle_offset() {
     );
 }
 
-// ── 9. NCRTF fixed_box block deserialises correctly ──────────────────────────
+// ── 9. NCRTF 2.0.0 table block deserialises correctly ────────────────────────
 
 #[test]
-fn ncrtf_fixed_box_deserialises() {
+fn ncrtf_table_block_deserialises() {
     let json = r#"{
-        "ncrtf": "1.0",
-        "meta": {},
-        "blocks": [
+        "ncrtf_version": "2.0.0",
+        "content": [
             {
-                "type": "fixed_box",
-                "x_mm": 20.0,
-                "y_mm": 257.0,
-                "width_mm": 120.0,
-                "height_mm": 15.0,
-                "overflow": "truncate",
-                "padding_mm": 2.0,
-                "alignment": "left",
-                "children": []
+                "type": "table",
+                "head": [{"cells": ["Coluna A", "Coluna B"]}],
+                "body": [{"cells": ["Linha 1A", "Linha 1B"]}]
             }
         ]
     }"#;
 
-    let doc = normordis_pdf::parse_ncrtf(json).expect("should parse");
-    assert_eq!(doc.blocks.len(), 1);
-    // Block variant should be FixedBox
+    let doc = normordis_pdf::parse_ncrtf(json).expect("table block must parse");
+    assert_eq!(doc.content.len(), 1);
     assert!(
-        matches!(
-            doc.blocks[0],
-            normordis_pdf::richtext::model::Block::FixedBox(_)
-        ),
-        "block should be FixedBox variant"
+        matches!(doc.content[0], normordis_pdf::richtext::model::Block::Table(_)),
+        "block must be Table variant"
     );
 }
 
-// ── 10. ncrtf_to_elements maps fixed_box to FixedTextBox (LayoutMode::Fixed) ─
+// ── 10. NCRTF 2.0.0 table block renders without panic ────────────────────────
 
 #[test]
-fn ncrtf_fixed_box_converts_to_fixed_element() {
+fn ncrtf_table_block_renders_ok() {
     let json = r#"{
-        "ncrtf": "1.0",
-        "meta": {},
-        "blocks": [
+        "ncrtf_version": "2.0.0",
+        "content": [
             {
-                "type": "fixed_box",
-                "x_mm": 20.0,
-                "y_mm": 257.0,
-                "width_mm": 120.0,
-                "height_mm": 15.0,
-                "children": [
-                    { "type": "text", "text": "Header text", "marks": [] }
+                "type": "table",
+                "body": [
+                    {"cells": ["Texto A", "Texto B"]},
+                    {"cells": ["Texto C", "Texto D"]}
                 ]
             }
         ]
@@ -280,15 +265,9 @@ fn ncrtf_fixed_box_converts_to_fixed_element() {
     let style = DocumentStyle::default();
     let doc = normordis_pdf::parse_ncrtf(json).unwrap();
     let elements = normordis_pdf::ncrtf_to_elements(&doc, &style);
-
     assert_eq!(elements.len(), 1);
-    assert!(
-        matches!(elements[0].layout_mode(), LayoutMode::Fixed(_)),
-        "converted element should have LayoutMode::Fixed"
-    );
 
-    // Full render to PDF must succeed.
-    let bytes = DocumentBuilder::new("fixed box ncrtf test")
+    let bytes = DocumentBuilder::new("ncrtf table test")
         .push_ncrtf(json)
         .unwrap()
         .render_to_bytes()

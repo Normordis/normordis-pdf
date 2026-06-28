@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
-use crate::NormaxisPdfError;
+use crate::NormordisPdfError;
 
 /// Integrity hashes over the NDF payload.
 /// All hashes computed over canonical JSON (RFC 8785 / JCS).
@@ -93,7 +93,7 @@ pub fn verify(ndf: &super::NdfDocument) -> crate::Result<IntegrityReport> {
     let actual_styles = canonical_hash(&ndf.styles);
 
     let meta_val =
-        serde_json::to_value(&ndf.meta).map_err(|e| NormaxisPdfError::SerdeError(e.to_string()))?;
+        serde_json::to_value(&ndf.meta).map_err(|e| NormordisPdfError::SerdeError(e.to_string()))?;
 
     let content_ok = actual_content == ndf.integrity.content_hash;
     let styles_ok = actual_styles == ndf.integrity.styles_hash;

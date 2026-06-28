@@ -2,36 +2,28 @@ use normordis_pdf::{
     DocumentBuilder, DocumentStyle, ncrtf_to_elements, parse_ncrtf, richtext::marks::MarkValue,
 };
 
-const MINIMAL_JSON: &str = r#"{
-  "ncrtf": "1.0",
-  "meta": {},
-  "blocks": []
-}"#;
+const MINIMAL_JSON: &str = r#"{"ncrtf_version":"2.0.0","content":[]}"#;
 
 const INVALID_JSON: &str = r#"{ not valid json"#;
 
 const HEADING_JSON: &str = r#"{
-  "ncrtf": "1.0",
-  "meta": {},
-  "blocks": [
+  "ncrtf_version": "2.0.0",
+  "content": [
     {
       "type": "heading",
       "level": 1,
-      "alignment": "left",
-      "children": [{ "type": "text", "text": "Introduction", "marks": [] }]
+      "content": [{ "type": "text", "text": "Introduction" }]
     }
   ]
 }"#;
 
 const BOLD_PARAGRAPH_JSON: &str = r#"{
-  "ncrtf": "1.0",
-  "meta": {},
-  "blocks": [
+  "ncrtf_version": "2.0.0",
+  "content": [
     {
       "type": "paragraph",
-      "alignment": "left",
-      "children": [
-        { "type": "text", "text": "Normal ", "marks": [] },
+      "content": [
+        { "type": "text", "text": "Normal " },
         { "type": "text", "text": "bold text", "marks": ["bold"] }
       ]
     }
@@ -44,7 +36,7 @@ const BOLD_PARAGRAPH_JSON: &str = r#"{
 fn parse_valid_json_returns_ok() {
     let result = parse_ncrtf(MINIMAL_JSON);
     assert!(result.is_ok(), "expected Ok, got {result:?}");
-    assert_eq!(result.unwrap().ncrtf, "1.0");
+    assert_eq!(result.unwrap().ncrtf_version, "2.0.0");
 }
 
 // ── 2. parse_ncrtf with invalid JSON ─────────────────────────────────────────
@@ -86,21 +78,19 @@ fn paragraph_with_bold_produces_bold_run() {
     assert!(bytes.starts_with(b"%PDF-"));
 }
 
-// ── 5. page_break block → PageBreakElement ───────────────────────────────────
+// ── 5. Two paragraphs produce valid PDF ──────────────────────────────────────
 
 #[test]
-fn page_break_block_in_document_produces_two_pages() {
+fn two_paragraphs_produce_valid_pdf() {
     let json = r#"{
-      "ncrtf": "1.0",
-      "meta": {},
-      "blocks": [
-        { "type": "paragraph", "alignment": "left", "children": [{ "type": "text", "text": "Page 1", "marks": [] }] },
-        { "type": "page_break" },
-        { "type": "paragraph", "alignment": "left", "children": [{ "type": "text", "text": "Page 2", "marks": [] }] }
+      "ncrtf_version": "2.0.0",
+      "content": [
+        { "type": "paragraph", "content": [{ "type": "text", "text": "Primeiro parágrafo." }] },
+        { "type": "paragraph", "content": [{ "type": "text", "text": "Segundo parágrafo." }] }
       ]
     }"#;
 
-    let bytes = DocumentBuilder::new("Two pages")
+    let bytes = DocumentBuilder::new("Two paragraphs")
         .push_ncrtf(json)
         .unwrap()
         .render_to_bytes()

@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{error::NormaxisPdfError, fonts::FontFallbackChain, layout::TextAlign};
+use crate::{error::NormordisPdfError, fonts::FontFallbackChain, layout::TextAlign};
 
 /// Diagonal text watermark rendered on every page.
 ///
@@ -286,7 +286,7 @@ impl<'a> StyleResolver<'a> {
         visited: &mut HashSet<String>,
     ) -> crate::Result<ResolvedStyle> {
         if !visited.insert(name.to_string()) {
-            return Err(NormaxisPdfError::StyleCycleError(name.to_string()));
+            return Err(NormordisPdfError::StyleCycleError(name.to_string()));
         }
 
         // User styles take priority over built-ins.
@@ -294,7 +294,7 @@ impl<'a> StyleResolver<'a> {
             .styles
             .get(name)
             .or_else(|| builtins.get(name))
-            .ok_or_else(|| NormaxisPdfError::UnknownStyle(name.to_string()))?;
+            .ok_or_else(|| NormordisPdfError::UnknownStyle(name.to_string()))?;
 
         // If this style extends another, resolve the parent first, then overlay.
         let base = if let Some(ref parent) = style.extends {

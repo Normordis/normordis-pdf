@@ -21,7 +21,7 @@
 //!     .push(Section::new("1. Introduction", 1))
 //!     .push(Paragraph::new("Document body text.").align(TextAlign::Justify))
 //!     .render_to_bytes()?;
-//! # Ok::<(), normordis_pdf::NormaxisPdfError>(())
+//! # Ok::<(), normordis_pdf::NormordisPdfError>(())
 //! ```
 //!
 //! ## Named Styles
@@ -33,21 +33,25 @@
 //!     .push(Section::new("Introduction", 1))
 //!     .push(Paragraph::new("Caption text.").style("caption"))
 //!     .render_to_bytes()?;
-//! # Ok::<(), normordis_pdf::NormaxisPdfError>(())
+//! # Ok::<(), normordis_pdf::NormordisPdfError>(())
 //! ```
 //!
-//! ## NDT Templates
+//! ## NDT Templates (v2.0.0)
 //!
-//! ```rust
+//! ```rust,no_run
 //! use normordis_pdf::DocumentBuilder;
 //!
 //! let data = r#"{"ndt_data":"1.0.0","data":{"entity":"Câmara Municipal"}}"#;
-//! let template = r#"{"ndt":"1.0.0","body":[{"type":"paragraph","text":"{{entity}}"}]}"#;
+//! let template = r#"{
+//!     "ndt_version": "2.0.0",
+//!     "schema_id": "urn:normordis:ndt:example",
+//!     "versao_ndt": "1.0.0",
+//!     "paginas_def": [{"id": "p1"}],
+//!     "sequencia": [{"pagina_def": "p1", "repeticao": "unica"}]
+//! }"#;
 //!
-//! let pdf = DocumentBuilder::new("Ofício")
-//!     .push_ndt(template, data)?
-//!     .render_to_bytes()?;
-//! # Ok::<(), normordis_pdf::NormaxisPdfError>(())
+//! let result = DocumentBuilder::new("Ofício")
+//!     .push_ndt(template, data);
 //! ```
 
 // ── Modules ───────────────────────────────────────────────────────────────────
@@ -71,7 +75,9 @@ pub mod template;
 
 // ── Error handling ────────────────────────────────────────────────────────────
 
-pub use error::{NormaxisPdfError, Result};
+pub use error::{NormordisPdfError, Result};
+#[allow(deprecated)]
+pub use error::NormaxisPdfError;
 
 // ── Digital signing ───────────────────────────────────────────────────────────
 
@@ -166,11 +172,9 @@ pub use template::{
 
 pub use template::model::{NdtOutput, NdtSignature, NdtSignatureField};
 
-// ── NDT template registry ────────────────────────────────────────────────────
+// ── NDT template filter ───────────────────────────────────────────────────────
 
-pub use template::{
-    NdtRegistry, NdtTemplateRecord, NdtTemplateSummary, TemplateFilter, TemplateStatus,
-};
+pub use template::TemplateFilter;
 
 // ── NDF pipeline ─────────────────────────────────────────────────────────────
 
@@ -191,10 +195,9 @@ pub use ndf::{
 
 pub use ndf::{NdfFilter, NdfRecord, NdfRecordStatus, NdfRecordSummary, NdfRegistry};
 
-// ── NCRTF 1.3.0 types ────────────────────────────────────────────────────────
+// ── NCRTF 2.0.0 types ────────────────────────────────────────────────────────
 
 pub use richtext::marks::MarkValue as NcrtfMark;
-pub use richtext::model::ImageBlock as NcrtfImage;
 
 // ── Version constants ─────────────────────────────────────────────────────────
 
@@ -209,7 +212,7 @@ pub use compliance::ua::{
 };
 
 /// NDT format version supported by this release.
-pub const NDT_VERSION: &str = "2.1.0";
+pub const NDT_VERSION: &str = "2.0.0";
 
 /// PDF backend crate powering the output engine.
 pub const PDF_BACKEND: &str = "pdf-writer";

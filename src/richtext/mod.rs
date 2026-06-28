@@ -5,28 +5,23 @@ pub mod model;
 pub use model::NcrtfDocument;
 
 /// NCRTF format version supported by this release.
-pub const NCRTF_VERSION: &str = "1.3.0";
+pub const NCRTF_VERSION: &str = "2.0.0";
 
-use crate::{NormaxisPdfError, Result, elements::Element, styles::DocumentStyle};
+use crate::{NormordisPdfError, Result, elements::Element, styles::DocumentStyle};
 
-/// Parse a JSON string as an NCRTF v1.0 document.
-///
-/// # Errors
-///
-/// Returns [`NormaxisPdfError::ParseError`] if the JSON is invalid or does not
-/// conform to the NCRTF v1.0 schema.
+/// Parse a JSON string as an NCRTF v2.0.0 document.
 ///
 /// # Example
 ///
 /// ```rust
 /// use normordis_pdf::parse_ncrtf;
 ///
-/// let json = r#"{"ncrtf":"1.0","blocks":[]}"#;
+/// let json = r#"{"ncrtf_version":"2.0.0","content":[]}"#;
 /// let doc = parse_ncrtf(json).unwrap();
-/// assert_eq!(doc.ncrtf, "1.0");
+/// assert_eq!(doc.ncrtf_version, "2.0.0");
 /// ```
 pub fn parse_ncrtf(json: &str) -> Result<NcrtfDocument> {
-    serde_json::from_str(json).map_err(|e| NormaxisPdfError::ParseError(e.to_string()))
+    serde_json::from_str(json).map_err(|e| NormordisPdfError::ParseError(e.to_string()))
 }
 
 /// Convert a parsed `NcrtfDocument` into renderable `normordis-pdf` elements.

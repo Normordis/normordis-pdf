@@ -1,11 +1,11 @@
 use normordis_pdf::{
-    AccessibilityConfig, CheckBoxDef, ComboBoxDef, DocumentBuilder, DocumentStyle,
+    AccessibilityConfig, AppliedStyle, CheckBoxDef, ComboBoxDef, DocumentBuilder, DocumentStyle,
     FOOTNOTE_SEPARATOR_THICKNESS_MM, FieldRect, FontRegistry, FootnoteMarkStyle, FootnoteRef,
     FormField, InstitutionalHeader, PageFlow, PageLayout, Paragraph, RenderContext, Section,
-    StructureTree, Table, TableCell, TableOfContents, TextFieldDef,
+    StructureTree, Table, TableCell, TableOfContents, TextFieldDef, TextRun,
     backend::pdf_writer_backend::PdfWriterBackend,
     elements::{Element, footnote::FootnoteAccumulator},
-    layout::{GlyphUsageTracker, TextLayoutEngine},
+    layout::{GlyphUsageTracker, TextAlign, TextLayoutEngine},
 };
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -760,95 +760,102 @@ fn form_39_minimal_field_rect_no_panic() {
     assert!(bytes.starts_with(b"%PDF-"));
 }
 
-// ── NDT 1.5.0 (40-45) ────────────────────────────────────────────────────────
+// ── NDT 2.0.0 (40-43) ────────────────────────────────────────────────────────
 
-// 40. NDT 1.5.0 com footnote_ref element deserializa correctamente
+// 40. NDT 2.0.0 com graficos array deserializa correctamente
 #[test]
-fn ndt_40_footnote_ref_element_deserializes() {
+fn ndt_40_graficos_array_deserializes() {
     let template = r#"{
-        "ndt": "1.5.0",
-        "body": [
-            { "type": "footnote_ref", "number": 1 }
-        ]
+        "ndt_version": "2.0.0",
+        "schema_id": "urn:normordis:ndt:test",
+        "versao_ndt": "1.0.0",
+        "paginas_def": [{"id": "p1", "graficos": [
+            {"tipo": "texto_fixo", "conteudo": "Texto fixo", "posicao": {"x": 10, "y": 10}},
+            {"tipo": "rectangulo", "posicao": {"x": 5, "y": 5}, "largura": 50, "altura": 20}
+        ]}],
+        "sequencia": [{"pagina_def": "p1", "repeticao": "unica"}]
     }"#;
-    let doc = normordis_pdf::parse_ndt(template).expect("NDT 1.5.0 with footnote_ref must parse");
-    assert_eq!(doc.body.len(), 1);
+    let doc = normordis_pdf::parse_ndt(template).expect("NDT 2.0.0 com graficos deve parsear");
+    assert_eq!(doc.paginas_def[0].graficos.len(), 2);
 }
 
-// 41. NDT 1.5.0 com toc element deserializa correctamente
+// 41. NDT 2.0.0 com campos array deserializa correctamente
 #[test]
-fn ndt_41_toc_element_deserializes() {
+fn ndt_41_campos_array_deserializes() {
     let template = r#"{
-        "ndt": "1.5.0",
-        "body": [
-            { "type": "toc", "title": "Índice", "max_level": 3 }
-        ]
+        "ndt_version": "2.0.0",
+        "schema_id": "urn:normordis:ndt:test",
+        "versao_ndt": "1.0.0",
+        "paginas_def": [{"id": "p1", "campos": [
+            {"referencia": "nome_contribuinte", "posicao": {"x": 30, "y": 50}, "largura": 100, "altura": 8}
+        ]}],
+        "sequencia": [{"pagina_def": "p1", "repeticao": "unica"}]
     }"#;
-    let doc = normordis_pdf::parse_ndt(template).expect("NDT 1.5.0 with toc must parse");
-    assert_eq!(doc.body.len(), 1);
+    let doc = normordis_pdf::parse_ndt(template).expect("NDT 2.0.0 com campos deve parsear");
+    assert_eq!(doc.paginas_def[0].campos.len(), 1);
+    assert_eq!(doc.paginas_def[0].campos[0].referencia, "nome_contribuinte");
 }
 
-// 42. NDT 1.5.0 com acroform_field deserializa correctamente
+// 42. NDT 2.0.0 com recursos embebidos deserializa correctamente
 #[test]
-fn ndt_42_acroform_field_deserializes() {
+fn ndt_42_recursos_embebidos_deserializes() {
     let template = r#"{
-        "ndt": "1.5.0",
-        "body": [
-            {
-                "type": "acroform_field",
-                "field_type": "text_field",
-                "name": "campo_nome",
-                "required": true,
-                "font_size": 11.0,
-                "rect": { "x_mm": 25.0, "y_mm": 240.0, "width_mm": 120.0, "height_mm": 8.0 }
-            }
-        ]
+        "ndt_version": "2.0.0",
+        "schema_id": "urn:normordis:ndt:test",
+        "versao_ndt": "1.0.0",
+        "recursos": [
+            {"id": "logo", "tipo": "png", "modo": "embebido", "dados": "base64:AAAA"}
+        ],
+        "paginas_def": [{"id": "p1"}],
+        "sequencia": [{"pagina_def": "p1", "repeticao": "unica"}]
     }"#;
-    let doc = normordis_pdf::parse_ndt(template).expect("NDT 1.5.0 with acroform_field must parse");
-    assert_eq!(doc.body.len(), 1);
+    let doc = normordis_pdf::parse_ndt(template).expect("NDT 2.0.0 com recursos deve parsear");
+    assert_eq!(doc.recursos.len(), 1);
 }
 
-// 43. NDT 1.4.0 (sem elementos 1.5.0) renderiza sem alteração (backwards compat)
+// 43. NDT 2.0.0 com múltiplas paginas_def e sequencia
 #[test]
-fn ndt_43_v140_template_backwards_compat() {
+fn ndt_43_multiple_paginas_def() {
     let template = r#"{
-        "ndt": "1.4.0",
-        "body": [
-            { "type": "paragraph", "text": "Texto compatível com NDT 1.4.0." },
-            { "type": "heading", "level": 1, "text": "Título 1.4.0" }
+        "ndt_version": "2.0.0",
+        "schema_id": "urn:normordis:ndt:test",
+        "versao_ndt": "1.0.0",
+        "paginas_def": [
+            {"id": "capa"},
+            {"id": "conteudo"},
+            {"id": "rodape"}
+        ],
+        "sequencia": [
+            {"pagina_def": "capa", "repeticao": "unica"},
+            {"pagina_def": "conteudo", "repeticao": "conforme_necessario"},
+            {"pagina_def": "rodape", "repeticao": "unica"}
         ]
     }"#;
-    let data = r#"{"ndt_data":"1.0.0","data":{}}"#;
-    let bytes = DocumentBuilder::new("v1.4.0 compat")
-        .push_ndt(template, data)
-        .expect("NDT 1.4.0 parse must succeed")
-        .render_to_bytes()
-        .expect("NDT 1.4.0 render must succeed");
-    assert!(bytes.starts_with(b"%PDF-"));
+    let doc = normordis_pdf::parse_ndt(template).expect("NDT 2.0.0 com múltiplas páginas deve parsear");
+    assert_eq!(doc.paginas_def.len(), 3);
+    assert_eq!(doc.sequencia.len(), 3);
 }
 
-// 44. NCRTF 1.3.0 com footnote_ref inline → FootnoteRef correctamente mapeado
+// 44. NCRTF 2.0.0 com link inline → renderiza correctamente
 #[test]
-fn ncrtf_44_footnote_ref_inline_maps_correctly() {
+fn ncrtf_44_link_inline_renders_correctly() {
     let json = r#"{
-        "ncrtf": "1.3.0",
-        "meta": {},
-        "blocks": [
+        "ncrtf_version": "2.0.0",
+        "content": [
             {
                 "type": "paragraph",
-                "children": [
-                    { "type": "text", "text": "Conforme legislação" },
-                    { "type": "footnote_ref", "number": 1 },
+                "content": [
+                    { "type": "text", "text": "Consultar " },
+                    { "type": "link", "href": "https://example.com", "content": [{"type":"text","text":"este sítio"}] },
                     { "type": "text", "text": "." }
                 ]
             }
         ]
     }"#;
-    let doc = normordis_pdf::parse_ncrtf(json).expect("NCRTF 1.3.0 with footnote_ref must parse");
-    assert_eq!(doc.blocks.len(), 1);
+    let doc = normordis_pdf::parse_ncrtf(json).expect("NCRTF 2.0.0 with link must parse");
+    assert_eq!(doc.content.len(), 1);
 
-    // Render to PDF must succeed
-    let bytes = DocumentBuilder::new("ncrtf footnote_ref")
+    let bytes = DocumentBuilder::new("ncrtf link inline")
         .push_ncrtf(json)
         .expect("push_ncrtf must succeed")
         .render_to_bytes()
@@ -856,32 +863,159 @@ fn ncrtf_44_footnote_ref_inline_maps_correctly() {
     assert!(bytes.starts_with(b"%PDF-"));
 }
 
-// 45. NCRTF 1.2.0 (sem footnote_ref) renderiza com defaults correctos
+// ── Superscript / Subscript / Small Caps (46-51) ─────────────────────────────
+
+// 46. Parágrafo com superscript não causa panic
 #[test]
-fn ncrtf_45_v120_renders_with_defaults() {
+fn marks_46_superscript_renders_without_panic() {
+    let runs = vec![
+        TextRun { text: "H".into(), ..Default::default() },
+        TextRun {
+            text: "2".into(),
+            style: AppliedStyle { superscript: true, ..Default::default() },
+            ..Default::default()
+        },
+        TextRun { text: "O".into(), ..Default::default() },
+    ];
+    let bytes = DocumentBuilder::new("test")
+        .push(Paragraph::from_runs(runs, TextAlign::Left, None))
+        .render_to_bytes()
+        .expect("superscript must render without panic");
+    assert!(bytes.starts_with(b"%PDF-"));
+}
+
+// 47. Parágrafo com subscript não causa panic
+#[test]
+fn marks_47_subscript_renders_without_panic() {
+    let runs = vec![
+        TextRun { text: "CO".into(), ..Default::default() },
+        TextRun {
+            text: "2".into(),
+            style: AppliedStyle { subscript: true, ..Default::default() },
+            ..Default::default()
+        },
+    ];
+    let bytes = DocumentBuilder::new("test")
+        .push(Paragraph::from_runs(runs, TextAlign::Left, None))
+        .render_to_bytes()
+        .expect("subscript must render without panic");
+    assert!(bytes.starts_with(b"%PDF-"));
+}
+
+// 48. Small caps converte texto para maiúsculas a 80% do tamanho
+#[test]
+fn marks_48_small_caps_renders_without_panic() {
+    let runs = vec![TextRun {
+        text: "normordis".into(),
+        style: AppliedStyle { small_caps: true, ..Default::default() },
+        ..Default::default()
+    }];
+    let bytes = DocumentBuilder::new("test")
+        .push(Paragraph::from_runs(runs, TextAlign::Left, None))
+        .render_to_bytes()
+        .expect("small caps must render without panic");
+    assert!(bytes.starts_with(b"%PDF-"));
+}
+
+// 49. font_size_override aplica-se correctamente a runs individuais
+#[test]
+fn marks_49_font_size_override_renders_without_panic() {
+    let runs = vec![
+        TextRun { text: "Normal ".into(), ..Default::default() },
+        TextRun {
+            text: "Grande".into(),
+            style: AppliedStyle { font_size_override: Some(20.0), ..Default::default() },
+            ..Default::default()
+        },
+    ];
+    let bytes = DocumentBuilder::new("test")
+        .push(Paragraph::from_runs(runs, TextAlign::Left, None))
+        .render_to_bytes()
+        .expect("font_size_override must render without panic");
+    assert!(bytes.starts_with(b"%PDF-"));
+}
+
+// 50. Superscript com underline não causa panic (decoração relativa à baseline ajustada)
+#[test]
+fn marks_50_superscript_with_underline_no_panic() {
+    let runs = vec![TextRun {
+        text: "ref".into(),
+        style: AppliedStyle { superscript: true, underline: true, ..Default::default() },
+        ..Default::default()
+    }];
+    let bytes = DocumentBuilder::new("test")
+        .push(Paragraph::from_runs(runs, TextAlign::Left, None))
+        .render_to_bytes()
+        .expect("superscript+underline must render without panic");
+    assert!(bytes.starts_with(b"%PDF-"));
+}
+
+// 51. (feature="hyphenation") greedy layout insere hífen na quebra de linha
+#[cfg(feature = "hyphenation")]
+#[test]
+fn hyph_51_greedy_layout_breaks_long_word_with_hyphen() {
+    let style = DocumentStyle::default();
+    let fonts = FontRegistry::new();
+    let engine = TextLayoutEngine::new(&fonts, &style);
+
+    // Measure the word width first so we can pick a column narrower than the word.
+    let word = "responsabilidade";
+    let word_w = fonts.measure_text_mm(word, "LiberationSans", 11.0, false, false);
+
+    // Column is half the word width — guaranteed to require at least one split.
+    let max_w = word_w / 2.0;
+    let result = engine.layout_plain(
+        &fonts,
+        word,
+        max_w,
+        TextAlign::Left,
+        11.0,
+        AppliedStyle::default(),
+    );
+    // Must produce at least 2 lines (the word was split).
+    assert!(
+        result.lines.len() >= 2,
+        "expected ≥2 lines from hyphenated word (word_w={word_w:.1}mm, col={max_w:.1}mm), got {}",
+        result.lines.len()
+    );
+    // The first segment of the first line must end with '-'.
+    let first_seg = &result.lines[0].segments[0].text;
+    assert!(
+        first_seg.ends_with('-'),
+        "first line segment must end with '-', got {:?}",
+        first_seg
+    );
+}
+
+// 45. NCRTF 2.0.0 com lista ordenada renderiza correctamente
+#[test]
+fn ncrtf_45_ordered_list_renders_correctly() {
     let json = r#"{
-        "ncrtf": "1.2.0",
-        "meta": {},
-        "blocks": [
+        "ncrtf_version": "2.0.0",
+        "content": [
             {
                 "type": "paragraph",
-                "children": [
-                    { "type": "text", "text": "Documento NCRTF 1.2.0.", "marks": [] }
-                ]
+                "content": [{ "type": "text", "text": "Introdução." }]
             },
             {
                 "type": "heading",
                 "level": 1,
-                "children": [
-                    { "type": "text", "text": "Título", "marks": [] }
+                "content": [{ "type": "text", "text": "Título" }]
+            },
+            {
+                "type": "list",
+                "list_type": "ordered",
+                "content": [
+                    {"type": "list_item", "content": [{"type": "text", "text": "Primeiro"}]},
+                    {"type": "list_item", "content": [{"type": "text", "text": "Segundo"}]}
                 ]
             }
         ]
     }"#;
-    let bytes = DocumentBuilder::new("ncrtf 1.2.0")
+    let bytes = DocumentBuilder::new("ncrtf 2.0.0 ordered list")
         .push_ncrtf(json)
-        .expect("NCRTF 1.2.0 push must succeed")
+        .expect("NCRTF 2.0.0 push must succeed")
         .render_to_bytes()
-        .expect("NCRTF 1.2.0 render must succeed");
+        .expect("NCRTF 2.0.0 render must succeed");
     assert!(bytes.starts_with(b"%PDF-"));
 }

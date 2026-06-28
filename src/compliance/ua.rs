@@ -50,6 +50,8 @@ pub enum StructTag {
     Aside,
     // List elements
     L,
+    LOrdered, // L with /A <<ListNumbering Decimal>> (ordered list)
+    LBullet,  // L with /A <<ListNumbering Disc>> (unordered list)
     LI,
     Lbl,
     LBody,
@@ -107,7 +109,7 @@ impl StructTag {
             Self::TOC => "TOC",
             Self::TOCI => "TOCI",
             Self::Aside => "Aside",
-            Self::L => "L",
+            Self::L | Self::LOrdered | Self::LBullet => "L",
             Self::LI => "LI",
             Self::Lbl => "Lbl",
             Self::LBody => "LBody",

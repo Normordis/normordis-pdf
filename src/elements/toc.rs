@@ -28,7 +28,7 @@ pub struct TocEntry {
 ///     .push(TableOfContents::new().title("Índice").max_level(3))
 ///     .push(Section::new("1. Introdução", 1))
 ///     .render_to_bytes()?;
-/// # Ok::<(), normordis_pdf::NormaxisPdfError>(())
+/// # Ok::<(), normordis_pdf::NormordisPdfError>(())
 /// ```
 #[derive(Debug, Clone)]
 pub struct TableOfContents {

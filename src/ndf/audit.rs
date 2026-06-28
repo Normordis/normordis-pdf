@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::NormaxisPdfError;
+use crate::NormordisPdfError;
 
 /// Append-only audit chain for an NDF document.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,14 +25,14 @@ impl NdfAudit {
         if event.seq == 0 {
             event.seq = expected;
         } else if event.seq != expected {
-            return Err(NormaxisPdfError::NdfAuditError(format!(
+            return Err(NormordisPdfError::NdfAuditError(format!(
                 "expected seq {expected}, got {}",
                 event.seq
             )));
         }
         if let Some(last) = self.events.last() {
             if event.timestamp < last.timestamp {
-                return Err(NormaxisPdfError::NdfAuditError(format!(
+                return Err(NormordisPdfError::NdfAuditError(format!(
                     "non-monotonic timestamp at seq {} ({} < {})",
                     event.seq, event.timestamp, last.timestamp
                 )));
