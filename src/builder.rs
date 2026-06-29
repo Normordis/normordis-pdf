@@ -151,6 +151,19 @@ impl DocumentBuilder {
         Ok(self)
     }
 
+    /// Merge all fonts found on the host system into the document registry.
+    ///
+    /// Embedded Liberation fonts are kept as reliable fallbacks and are never
+    /// overwritten.  The default family remains `LiberationSans` unless changed
+    /// with [`DocumentBuilder::default_font`].
+    ///
+    /// Requires the `system-fonts` feature flag.
+    #[cfg(feature = "system-fonts")]
+    pub fn fonts_from_system(mut self) -> crate::Result<Self> {
+        self.fonts.load_system_fonts()?;
+        Ok(self)
+    }
+
     /// Set the default font family for the document.
     ///
     /// The family must already be registered (built-in or via `font_from_*`).

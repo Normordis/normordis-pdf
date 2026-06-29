@@ -58,6 +58,7 @@ hex.workspace = true
 toml = "0.8"
 fontdb = { version = "0.23", optional = true }
 hyphenation = { version = "0.8", features = ["embed_all"], optional = true }
+ureq = { version = "2", optional = true }
 sha2 = "0.10"
 base64 = { workspace = true }
 
@@ -66,6 +67,7 @@ default = []
 optimal_wrap = []
 system-fonts = ["dep:fontdb"]
 hyphenation = ["dep:hyphenation"]
+tsa = ["dep:ureq"]
 ffi = []
 
 [dev-dependencies]

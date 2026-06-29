@@ -65,8 +65,9 @@ impl Element for FixedImageBox {
             }
         }
 
-        if !self.data.is_empty() {
-            if let Ok(img) = image::load_from_memory(&self.data) {
+        if !self.data.is_empty()
+            && let Ok(img) = image::load_from_memory(&self.data)
+        {
                 let (px_w, px_h) = (img.width() as f64, img.height() as f64);
                 let aspect = if px_w > 0.0 { px_h / px_w } else { 1.0 };
                 let box_w = self.image_box.width_mm;
@@ -108,7 +109,6 @@ impl Element for FixedImageBox {
                         render_h,
                     );
                 }
-            }
         }
 
         if ua {

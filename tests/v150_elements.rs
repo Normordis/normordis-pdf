@@ -1,8 +1,9 @@
 use normordis_pdf::{
     AccessibilityConfig, AppliedStyle, CheckBoxDef, ComboBoxDef, DocumentBuilder, DocumentStyle,
     FOOTNOTE_SEPARATOR_THICKNESS_MM, FieldRect, FontRegistry, FootnoteMarkStyle, FootnoteRef,
-    FormField, InstitutionalHeader, PageFlow, PageLayout, Paragraph, RenderContext, Section,
-    StructureTree, Table, TableCell, TableOfContents, TextFieldDef, TextRun,
+    FormField, InstitutionalHeader, LineBreakingMode, PageFlow, PageLayout, Paragraph,
+    RenderContext, Section, StructureTree, Table, TableCell, TableOfContents, TextFieldDef,
+    TextRun,
     backend::pdf_writer_backend::PdfWriterBackend,
     elements::{Element, footnote::FootnoteAccumulator},
     layout::{GlyphUsageTracker, TextAlign, TextLayoutEngine},
@@ -1018,4 +1019,77 @@ fn ncrtf_45_ordered_list_renders_correctly() {
         .render_to_bytes()
         .expect("NCRTF 2.0.0 render must succeed");
     assert!(bytes.starts_with(b"%PDF-"));
+}
+
+// ── Knuth-Plass end-to-end (52-55) ───────────────────────────────────────────
+
+// 52. Parágrafo com modo Greedy produz PDF válido (smoke test da ligação)
+#[test]
+fn kp_52_greedy_mode_produces_valid_pdf() {
+    let bytes = DocumentBuilder::new("kp test")
+        .push(
+            Paragraph::new(
+                "Este parágrafo usa o algoritmo Greedy para quebra de linha, \
+                 que é o comportamento por omissão.",
+            )
+            .align(TextAlign::Justify)
+            .line_breaking(LineBreakingMode::Greedy),
+        )
+        .render_to_bytes()
+        .expect("greedy paragraph must render");
+    assert!(bytes.starts_with(b"%PDF-"));
+}
+
+// 53. Parágrafo com modo KnuthPlass produz PDF válido (sem feature cai em Greedy)
+#[test]
+fn kp_53_knuth_plass_mode_produces_valid_pdf() {
+    let bytes = DocumentBuilder::new("kp test")
+        .push(
+            Paragraph::new(
+                "Este parágrafo usa o algoritmo Knuth-Plass para quebra de linha óptima, \
+                 produzindo espaçamento inter-palavra mais uniforme em texto justificado.",
+            )
+            .align(TextAlign::Justify)
+            .line_breaking(LineBreakingMode::KnuthPlass),
+        )
+        .render_to_bytes()
+        .expect("knuth-plass paragraph must render");
+    assert!(bytes.starts_with(b"%PDF-"));
+}
+
+// 54. Documento misto: alguns parágrafos Greedy, outros KnuthPlass — sem conflito
+#[test]
+fn kp_54_mixed_modes_in_same_document() {
+    let bytes = DocumentBuilder::new("kp mixed")
+        .push(Paragraph::new("Parágrafo Greedy.").line_breaking(LineBreakingMode::Greedy))
+        .push(Paragraph::new("Parágrafo Knuth-Plass.").line_breaking(LineBreakingMode::KnuthPlass))
+        .push(Paragraph::new("Parágrafo por omissão (Greedy)."))
+        .render_to_bytes()
+        .expect("mixed-mode document must render");
+    assert!(bytes.starts_with(b"%PDF-"));
+}
+
+// 55. (feature="optimal_wrap") KnuthPlass com texto justificado produz ≥1 linha
+#[cfg(feature = "optimal_wrap")]
+#[test]
+fn kp_55_with_feature_kp_produces_lines() {
+    let style = DocumentStyle::default();
+    let fonts = FontRegistry::new();
+    let engine = TextLayoutEngine::new(&fonts, &style);
+    use normordis_pdf::layout::LineBreakingMode;
+    use normordis_pdf::richtext::marks::TextRun as TR;
+
+    let runs = vec![TR::plain(
+        "responsabilidade desenvolvimento implementação funcionalidade disponibilidade",
+    )];
+    let result = engine.layout_runs_with_mode(
+        &fonts,
+        &runs,
+        80.0,
+        TextAlign::Justify,
+        11.0,
+        &[],
+        LineBreakingMode::KnuthPlass,
+    );
+    assert!(!result.lines.is_empty(), "KP must produce at least one line");
 }

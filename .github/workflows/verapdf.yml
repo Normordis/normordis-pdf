@@ -1,0 +1,102 @@
+name: PDF/A & PDF/UA-2 (veraPDF)
+
+# Validates that generated PDFs are genuinely conformant.
+# Runs in a separate workflow so a veraPDF install hiccup never blocks the
+# main Rust test suite.
+
+on:
+  push:
+    branches: [main, devel]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  VERAPDF_VER: "1.30.2"
+  VERAPDF_HOME: "/home/runner/verapdf"
+
+jobs:
+  verapdf:
+    name: veraPDF conformance
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ubuntu-verapdf-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ubuntu-verapdf-cargo-
+
+      # Java 17 is needed to run the veraPDF installer and the veraPDF CLI.
+      - name: Install Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # veraPDF uses an IzPack installer.  We drive it non-interactively with
+      # an auto-install XML (IzPack 5 "automated installation" format).
+      - name: Install veraPDF ${{ env.VERAPDF_VER }}
+        run: |
+          wget -q \
+            "https://github.com/veraPDF/veraPDF-apps/releases/download/v${VERAPDF_VER}/verapdf-greenfield-${VERAPDF_VER}-installer.zip"
+          unzip -q "verapdf-greenfield-${VERAPDF_VER}-installer.zip"
+
+          cat > verapdf-auto-install.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+          <AutomatedInstallation langpack="eng">
+            <com.izforge.izpack.panels.hello.HelloPanel/>
+            <com.izforge.izpack.panels.licence.LicencePanel>
+              <com.izforge.izpack.panels.licence.LicencePanel-licence>ACCEPTED</com.izforge.izpack.panels.licence.LicencePanel-licence>
+            </com.izforge.izpack.panels.licence.LicencePanel>
+            <com.izforge.izpack.panels.target.TargetPanel>
+              <installpath>/home/runner/verapdf</installpath>
+            </com.izforge.izpack.panels.target.TargetPanel>
+            <com.izforge.izpack.panels.install.InstallPanel/>
+            <com.izforge.izpack.panels.finish.FinishPanel/>
+          </AutomatedInstallation>
+          EOF
+
+          java -jar \
+            "verapdf-greenfield-${VERAPDF_VER}/verapdf-greenfield-${VERAPDF_VER}-installer.jar" \
+            verapdf-auto-install.xml
+
+          echo "${VERAPDF_HOME}" >> "$GITHUB_PATH"
+
+      - name: Verify veraPDF installation
+        run: verapdf --version
+
+      # Build verify-pdf (the Rust CLI that wraps veraPDF and produces
+      # human-readable + exit-code output).
+      - name: Build verify-pdf
+        run: cargo build --package verify-pdf
+
+      # Each `cargo run --example` also compiles the example if needed.
+      - name: Generate PDF/A-1b  [example 12_compliance]
+        run: cargo run --example 12_compliance
+
+      - name: Generate PDF/UA-2  [example 13_accessibility]
+        run: cargo run --example 13_accessibility
+
+      # Validate PDF/A-1b.  Exit code 1 if veraPDF reports failures.
+      - name: Validate PDF/A-1b
+        run: |
+          target/debug/verify-pdf /tmp/normordis_pdfa.pdf \
+            --flavour 1b \
+            --pdfa-only
+
+      # Validate PDF/UA-2.  The -f ua2 flag requires veraPDF 1.30+.
+      - name: Validate PDF/UA-2
+        run: |
+          target/debug/verify-pdf /tmp/normaxis_accessible.pdf \
+            --ua-only

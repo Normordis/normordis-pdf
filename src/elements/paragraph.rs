@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::{Element, RenderContext, RenderResult};
 use crate::{
     compliance::ua::StructTag,
-    layout::{DecorationLine, TabStop, TextAlign},
+    layout::{DecorationLine, LineBreakingMode, TabStop, TextAlign},
     richtext::marks::AppliedStyle,
     styles::{RgbColor, StyleResolver},
 };
@@ -110,6 +110,11 @@ pub struct Paragraph {
     /// Per-paragraph font family override. Overrides the named style's font_family.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub font_family_override: Option<String>,
+    /// Line-breaking algorithm. Defaults to `Greedy`.
+    /// Set to `KnuthPlass` (requires the `optimal_wrap` feature) for better
+    /// inter-word spacing in justified body text.
+    #[serde(default)]
+    pub line_breaking: LineBreakingMode,
 }
 
 impl Paragraph {
@@ -132,6 +137,7 @@ impl Paragraph {
             keep_next: false,
             keep_lines: false,
             font_family_override: None,
+            line_breaking: LineBreakingMode::default(),
         }
     }
 
@@ -154,6 +160,7 @@ impl Paragraph {
             keep_next: false,
             keep_lines: false,
             font_family_override: None,
+            line_breaking: LineBreakingMode::default(),
         }
     }
 
@@ -241,6 +248,15 @@ impl Paragraph {
     /// the document default if the name is not registered.
     pub fn font_family(mut self, name: impl Into<String>) -> Self {
         self.font_family_override = Some(name.into());
+        self
+    }
+
+    /// Set the line-breaking algorithm for this paragraph.
+    ///
+    /// `LineBreakingMode::KnuthPlass` requires the `optimal_wrap` feature flag
+    /// and falls back to `Greedy` when the feature is not compiled.
+    pub fn line_breaking(mut self, mode: LineBreakingMode) -> Self {
+        self.line_breaking = mode;
         self
     }
 
@@ -425,13 +441,14 @@ impl Element for Paragraph {
         if family_changed {
             ctx.layout_engine.set_default_family(&effective_family);
         }
-        let result = ctx.layout_engine.layout_runs(
+        let result = ctx.layout_engine.layout_runs_with_mode(
             &ctx.fonts,
             &runs,
             max_width,
             effective_alignment,
             font_size,
             &self.tab_stops,
+            self.line_breaking,
         );
         if family_changed {
             ctx.layout_engine.set_default_family(saved_engine_family);
@@ -455,14 +472,12 @@ impl Element for Paragraph {
 
         // Orphan control: if fresh and a split would leave too few lines at the
         // bottom, push the entire paragraph to the next page instead.
-        if is_fresh && !ctx.flow.is_top_of_page() {
-            if let Some(nb) = natural_break {
-                let lines_on_page = nb - start_line;
-                let min_orphan = ctx.style.min_orphan_lines as usize;
-                if min_orphan > 0 && lines_on_page > 0 && lines_on_page < min_orphan {
-                    ctx.resume_index = 0;
-                    return Ok(RenderResult::more());
-                }
+        if is_fresh && !ctx.flow.is_top_of_page() && let Some(nb) = natural_break {
+            let lines_on_page = nb - start_line;
+            let min_orphan = ctx.style.min_orphan_lines as usize;
+            if min_orphan > 0 && lines_on_page > 0 && lines_on_page < min_orphan {
+                ctx.resume_index = 0;
+                return Ok(RenderResult::more());
             }
         }
 
@@ -508,22 +523,20 @@ impl Element for Paragraph {
         let block_w = max_width;
         let block_h = result.total_height_mm;
 
-        if is_fresh {
-            if let Some(ref bg) = self.background {
-                let pad = self.border.as_ref().map(|b| b.padding_mm).unwrap_or(0.0);
-                if ctx.ua_config.enabled {
-                    ctx.backend.begin_artifact_content();
-                }
-                ctx.backend.draw_rect(
-                    block_x - pad,
-                    block_y_top - block_h - pad,
-                    block_w + pad * 2.0,
-                    block_h + pad * 2.0,
-                    bg,
-                )?;
-                if ctx.ua_config.enabled {
-                    ctx.backend.end_tagged_content();
-                }
+        if is_fresh && let Some(ref bg) = self.background {
+            let pad = self.border.as_ref().map(|b| b.padding_mm).unwrap_or(0.0);
+            if ctx.ua_config.enabled {
+                ctx.backend.begin_artifact_content();
+            }
+            ctx.backend.draw_rect(
+                block_x - pad,
+                block_y_top - block_h - pad,
+                block_w + pad * 2.0,
+                block_h + pad * 2.0,
+                bg,
+            )?;
+            if ctx.ua_config.enabled {
+                ctx.backend.end_tagged_content();
             }
         }
 
@@ -639,9 +652,8 @@ impl Element for Paragraph {
         }
 
         // ── Paragraph borders (only on fresh start — can't span pages) ────────
-        if is_fresh {
-            if let Some(ref brd) = self.border {
-                let pad = brd.padding_mm;
+        if is_fresh && let Some(ref brd) = self.border {
+            let pad = brd.padding_mm;
                 let x0 = block_x - pad;
                 let x1 = block_x + block_w + pad;
                 let y_top = block_y_top + pad;
@@ -689,9 +701,8 @@ impl Element for Paragraph {
                     let pt = (dl.thickness_mm * 72.0 / 25.4) as f32;
                     ctx.draw_vline(x1, y_bot, y_top, pt, &col)?;
                 }
-                if ctx.ua_config.enabled && has_border {
-                    ctx.backend.end_tagged_content();
-                }
+            if ctx.ua_config.enabled && has_border {
+                ctx.backend.end_tagged_content();
             }
         } // end is_fresh border block
 

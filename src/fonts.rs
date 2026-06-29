@@ -316,10 +316,10 @@ impl FontRegistry {
         if let Some(fam) = self.families.get(name) {
             return fam;
         }
-        if let Some(target) = self.aliases.get(name) {
-            if let Some(fam) = self.families.get(target.as_str()) {
-                return fam;
-            }
+        if let Some(target) = self.aliases.get(name)
+            && let Some(fam) = self.families.get(target.as_str())
+        {
+            return fam;
         }
         self.get_default()
     }
@@ -636,16 +636,24 @@ impl FontRegistry {
         })
     }
 
-    /// Load a [`FontRegistry`] populated with all fonts found on the host system.
+    /// Merge all fonts found on the host system into this registry.
+    ///
+    /// Families that are already registered (e.g., the embedded Liberation fonts)
+    /// are kept as-is — system fonts do not overwrite embedded fallbacks.
+    /// Individual fonts that fail to parse are silently skipped.
+    /// Returns the number of **new** families added.
+    ///
+    /// Returns `Ok(0)` — not an error — when no system fonts are found (the
+    /// registry retains whatever was already registered).
     ///
     /// Requires the `system-fonts` feature flag.
     #[cfg(feature = "system-fonts")]
-    pub fn from_system() -> crate::Result<FontRegistry> {
+    pub fn load_system_fonts(&mut self) -> crate::Result<usize> {
         let mut db = fontdb::Database::new();
         db.load_system_fonts();
 
+        // Collect faces into a family → [regular, bold, italic, bold_italic] map.
         let mut map: HashMap<String, [Option<Vec<u8>>; 4]> = HashMap::new();
-
         for face in db.faces() {
             let family = match face.families.first() {
                 Some((f, _)) if !f.is_empty() => f.clone(),
@@ -669,31 +677,40 @@ impl FontRegistry {
             }
         }
 
-        let mut families = HashMap::new();
-        let mut default_family = String::new();
+        let mut count = 0usize;
         for (name, [regular, bold, italic, bold_italic]) in map {
+            // Never overwrite already-registered families (embedded fonts take priority).
+            if self.families.contains_key(&name) {
+                continue;
+            }
             if let Some(reg_bytes) = regular {
-                let fam =
-                    FontVariants::from_bytes(name.clone(), reg_bytes, bold, italic, bold_italic)?;
-                if default_family.is_empty() {
-                    default_family = name.clone();
+                // Individual parse errors are silently skipped — one bad font file
+                // should not prevent the rest of the system fonts from loading.
+                if let Ok(fam) =
+                    FontVariants::from_bytes(name.clone(), reg_bytes, bold, italic, bold_italic)
+                {
+                    self.families.insert(name, fam);
+                    count += 1;
                 }
-                families.insert(name, fam);
             }
         }
 
-        if families.is_empty() {
-            return Err(NormordisPdfError::FontLoadError(
-                "no system fonts found".to_string(),
-            ));
-        }
+        Ok(count)
+    }
 
-        Ok(FontRegistry {
-            families,
-            aliases: HashMap::new(),
-            default_family,
-            monospace_family: None,
-        })
+    /// Create a registry pre-loaded with embedded Liberation fonts and all
+    /// fonts found on the host system.
+    ///
+    /// The embedded Liberation fonts (Sans, Serif, Mono) act as reliable fallbacks
+    /// and are never overwritten by system fonts.  The default family remains
+    /// `LiberationSans`.
+    ///
+    /// Requires the `system-fonts` feature flag.
+    #[cfg(feature = "system-fonts")]
+    pub fn from_system() -> crate::Result<FontRegistry> {
+        let mut registry = FontRegistry::default(); // Liberation fonts + Word aliases
+        registry.load_system_fonts()?;             // merge system fonts on top
+        Ok(registry)
     }
 }
 

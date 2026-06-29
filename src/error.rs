@@ -44,6 +44,9 @@ pub enum NormordisPdfError {
 
     #[error("serialisation error: {0}")]
     SerdeError(String),
+
+    #[error("TSA timestamp error: {0}")]
+    TsaError(String),
 }
 
 pub type Result<T> = std::result::Result<T, NormordisPdfError>;

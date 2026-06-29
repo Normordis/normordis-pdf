@@ -30,13 +30,11 @@ impl NdfAudit {
                 event.seq
             )));
         }
-        if let Some(last) = self.events.last() {
-            if event.timestamp < last.timestamp {
-                return Err(NormordisPdfError::NdfAuditError(format!(
-                    "non-monotonic timestamp at seq {} ({} < {})",
-                    event.seq, event.timestamp, last.timestamp
-                )));
-            }
+        if let Some(last) = self.events.last() && event.timestamp < last.timestamp {
+            return Err(NormordisPdfError::NdfAuditError(format!(
+                "non-monotonic timestamp at seq {} ({} < {})",
+                event.seq, event.timestamp, last.timestamp
+            )));
         }
         self.events.push(event);
         Ok(())
