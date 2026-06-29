@@ -150,31 +150,25 @@ pub fn verify(ndf: &super::NdfDocument) -> crate::Result<IntegrityReport> {
 }
 
 fn verify_audit_chain(audit: &super::audit::NdfAudit) -> bool {
-    let mut expected_seq = 1u32;
     let mut prev_ts: Option<&str> = None;
     let first_hash = audit.events.first().and_then(|e| e.content_hash.as_deref());
 
-    for event in &audit.events {
+    for (expected_seq, event) in (1u32..).zip(audit.events.iter()) {
         if event.seq != expected_seq {
             return false;
         }
-        expected_seq += 1;
 
-        if let Some(prev) = prev_ts {
-            if event.timestamp.as_str() < prev {
-                return false;
-            }
+        if let Some(prev) = prev_ts && event.timestamp.as_str() < prev {
+            return false;
         }
         prev_ts = Some(&event.timestamp);
 
-        if event.is_documentary() {
-            if let Some(ref hash) = event.content_hash {
-                if let Some(first) = first_hash {
-                    if hash.as_str() != first {
-                        return false;
-                    }
-                }
-            }
+        if event.is_documentary()
+            && let Some(ref hash) = event.content_hash
+            && let Some(first) = first_hash
+            && hash.as_str() != first
+        {
+            return false;
         }
     }
     true

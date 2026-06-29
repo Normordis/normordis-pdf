@@ -72,6 +72,7 @@ pub mod richtext;
 pub mod signing;
 pub mod styles;
 pub mod template;
+pub mod tsa;
 
 // ── Error handling ────────────────────────────────────────────────────────────
 
@@ -82,6 +83,9 @@ pub use error::NormaxisPdfError;
 // ── Digital signing ───────────────────────────────────────────────────────────
 
 pub use signing::{PreparedPdf, SignatureConfig, SignatureField, SignatureOptions, sign_pdf};
+pub use tsa::{embed_timestamp, extract_signature_value};
+#[cfg(feature = "tsa")]
+pub use tsa::{request_timestamp, timestamp_pkcs7};
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 

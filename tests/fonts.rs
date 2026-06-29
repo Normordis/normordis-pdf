@@ -1,4 +1,4 @@
-use normordis_pdf::{FontFamily, FontRegistry};
+use normordis_pdf::{DocumentBuilder, FontFamily, FontRegistry};
 
 #[test]
 fn default_registry_does_not_panic() {
@@ -85,4 +85,65 @@ fn liberation_sans_family_loads_ok() {
 fn font_family_from_bytes_invalid_returns_err() {
     let result = FontFamily::from_bytes("Bad", vec![0u8; 64], None, None, None);
     assert!(result.is_err(), "garbage bytes should fail to parse");
+}
+
+// ── System fonts (feature = "system-fonts") ───────────────────────────────────
+
+// load_system_fonts sempre retorna Ok — mesmo sem fontes no sistema
+#[cfg(feature = "system-fonts")]
+#[test]
+fn sys_font_load_system_fonts_returns_ok() {
+    let mut reg = FontRegistry::default();
+    let result = reg.load_system_fonts();
+    assert!(result.is_ok(), "load_system_fonts must not fail: {:?}", result);
+}
+
+// from_system inclui sempre LiberationSans (embedded) no resultado
+#[cfg(feature = "system-fonts")]
+#[test]
+fn sys_font_from_system_includes_embedded_liberation() {
+    let reg = FontRegistry::from_system().expect("from_system must succeed");
+    // LiberationSans is embedded via FontRegistry::default(); must survive the merge.
+    let w = reg.measure_text_mm("A", "LiberationSans", 12.0, false, false);
+    assert!(w > 0.0, "LiberationSans must be present in from_system registry");
+}
+
+// from_system tem default_family definida e mensurável
+#[cfg(feature = "system-fonts")]
+#[test]
+fn sys_font_from_system_default_family_is_usable() {
+    let reg = FontRegistry::from_system().expect("from_system must succeed");
+    let family = reg.default_family_name().to_string();
+    assert!(!family.is_empty(), "default_family must not be empty");
+    let w = reg.measure_text_mm("Texto", &family, 11.0, false, false);
+    assert!(w > 0.0, "default family '{family}' must have positive advance");
+}
+
+// load_system_fonts não sobrescreve famílias já registadas
+#[cfg(feature = "system-fonts")]
+#[test]
+fn sys_font_load_does_not_overwrite_existing_families() {
+    let mut reg = FontRegistry::default();
+    // Measure LiberationSans before loading system fonts.
+    let w_before = reg.measure_text_mm("A", "LiberationSans", 12.0, false, false);
+    reg.load_system_fonts().expect("load_system_fonts must succeed");
+    // LiberationSans width must be unchanged after the system merge.
+    let w_after = reg.measure_text_mm("A", "LiberationSans", 12.0, false, false);
+    assert_eq!(
+        w_before, w_after,
+        "LiberationSans must not be overwritten by load_system_fonts"
+    );
+}
+
+// DocumentBuilder::fonts_from_system produz PDF válido
+#[cfg(feature = "system-fonts")]
+#[test]
+fn sys_font_builder_fonts_from_system_produces_valid_pdf() {
+    let bytes = DocumentBuilder::new("system fonts test")
+        .fonts_from_system()
+        .expect("fonts_from_system must succeed")
+        .push(normordis_pdf::Paragraph::new("Texto com fontes do sistema."))
+        .render_to_bytes()
+        .expect("render must succeed");
+    assert!(bytes.starts_with(b"%PDF-"), "output must be a valid PDF");
 }

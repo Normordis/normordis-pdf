@@ -240,11 +240,11 @@ impl UaValidator {
             None => v.errors.push(UaError::NoStructureTree),
             Some(t) if t.is_empty() => v.errors.push(UaError::NoStructureTree),
             Some(t) => {
-                if let Some(StructEvent::BeginGroup { tag, .. }) = t.events.first() {
-                    if *tag != StructTag::Document && *tag != StructTag::DocumentFragment {
-                        v.errors
-                            .push(UaError::InvalidRootTag(tag.pdf_name().to_string()));
-                    }
+                if let Some(StructEvent::BeginGroup { tag, .. }) = t.events.first()
+                    && *tag != StructTag::Document
+                    && *tag != StructTag::DocumentFragment
+                {
+                    v.errors.push(UaError::InvalidRootTag(tag.pdf_name().to_string()));
                 }
             }
         }

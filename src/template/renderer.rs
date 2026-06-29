@@ -33,12 +33,12 @@ use crate::{
 fn resolve_image_src(src: &str, data: &NdtData) -> Vec<u8> {
     let resolved = resolver::resolve_string(src, data);
     let s = resolved.trim();
-    if let Some(rest) = s.strip_prefix("data:image/") {
-        if let Some(b64) = rest.splitn(2, ";base64,").nth(1) {
-            return base64::engine::general_purpose::STANDARD
-                .decode(b64.trim())
-                .unwrap_or_default();
-        }
+    if let Some(rest) = s.strip_prefix("data:image/")
+        && let Some((_, b64)) = rest.split_once(";base64,")
+    {
+        return base64::engine::general_purpose::STANDARD
+            .decode(b64.trim())
+            .unwrap_or_default();
     }
     Vec::new()
 }
@@ -295,10 +295,8 @@ pub(crate) fn render_body_elements(
                 if let Some(lvl) = toc_el.max_level {
                     toc = toc.max_level(lvl);
                 }
-                if let Some(ref lc) = toc_el.leader_char {
-                    if let Some(c) = lc.chars().next() {
-                        toc = toc.dot_leader(c);
-                    }
+                if let Some(ref lc) = toc_el.leader_char && let Some(c) = lc.chars().next() {
+                    toc = toc.dot_leader(c);
                 }
                 elements.push(Box::new(toc));
             }

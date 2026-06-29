@@ -76,13 +76,11 @@ impl NdfDocument {
 
     /// Appends an audit event, verifying content_hash for documentary events.
     pub fn add_event(&mut self, event: AuditEvent) -> crate::Result<()> {
-        if let Some(ref hash) = event.content_hash {
-            if hash != &self.integrity.content_hash {
-                return Err(NormordisPdfError::NdfAuditError(format!(
-                    "content_hash mismatch at event seq {} — content has been modified",
-                    self.audit.next_seq()
-                )));
-            }
+        if let Some(ref hash) = event.content_hash && hash != &self.integrity.content_hash {
+            return Err(NormordisPdfError::NdfAuditError(format!(
+                "content_hash mismatch at event seq {} — content has been modified",
+                self.audit.next_seq()
+            )));
         }
         self.audit.append(event)
     }

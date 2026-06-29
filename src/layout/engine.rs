@@ -584,6 +584,7 @@ impl TextLayoutEngine {
     /// When `mode` is [`LineBreakingMode::KnuthPlass`] and the `optimal_wrap`
     /// feature is compiled, uses the Knuth-Plass algorithm for better paragraph
     /// colour (inter-word spacing consistency).  Falls back to greedy otherwise.
+    #[allow(clippy::too_many_arguments)]
     pub fn layout_runs_with_mode(
         &self,
         fonts: &FontRegistry,
@@ -597,19 +598,15 @@ impl TextLayoutEngine {
         match mode {
             LineBreakingMode::KnuthPlass => {
                 #[cfg(feature = "optimal_wrap")]
-                {
-                    return self.layout_runs_knuth_plass(
-                        fonts,
-                        runs,
-                        max_width_mm,
-                        alignment,
-                        font_size,
-                    );
-                }
-                #[cfg(not(feature = "optimal_wrap"))]
-                {
-                    let _ = mode;
-                }
+                return self.layout_runs_knuth_plass(
+                    fonts,
+                    runs,
+                    max_width_mm,
+                    alignment,
+                    font_size,
+                );
+                // Falls back to greedy when `optimal_wrap` feature is not compiled.
+                #[cfg_attr(feature = "optimal_wrap", allow(unreachable_code))]
                 self.layout_runs(fonts, runs, max_width_mm, alignment, font_size, tab_stops)
             }
             LineBreakingMode::Greedy => {
