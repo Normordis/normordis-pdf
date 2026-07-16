@@ -6,6 +6,8 @@
 //! # Typical flow
 //!
 //! ```rust,no_run
+//! # #[cfg(feature = "tsa")]
+//! # {
 //! use normordis_pdf::{DocumentBuilder, SignatureConfig};
 //! use normordis_pdf::tsa::timestamp_pkcs7;
 //!
@@ -18,6 +20,7 @@
 //! let pkcs7_with_tst = timestamp_pkcs7(&pkcs7_der, "http://tsa.example.com/tsa")?;
 //! let signed_pdf = prepared.embed_signature(&pkcs7_with_tst)?;
 //! # Ok::<(), normordis_pdf::NormordisPdfError>(())
+//! # }
 //! ```
 
 use crate::{NormordisPdfError, Result};
