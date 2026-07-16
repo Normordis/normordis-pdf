@@ -105,17 +105,10 @@ fn main() {
         Command::Validate { input } => read_input(input)
             .and_then(|src| parse_ndt(&src).map_err(|e| format!("invalid NDT: {e}")))
             .map(|doc| {
-                let compat = doc
-                    .meta
-                    .as_ref()
-                    .and_then(|m| m.compat_mode)
-                    .map(|v| format!(", compat_mode={v}"))
-                    .unwrap_or_default();
                 println!(
-                    "OK — NDT v{} ({}{})",
-                    doc.ndt,
-                    detect_format_hint(&doc),
-                    compat
+                    "OK — NDT v{} ({})",
+                    doc.ndt_version,
+                    detect_format_hint(&doc)
                 );
             }),
 
