@@ -1,7 +1,7 @@
 # build-release.ps1 — Build normordis-pdf library and CLI tools in release mode.
 #
 # Usage:
-#   .\scripts\build-release.ps1 [-Target <triple>] [-OutDir <dir>]
+#   .\scripts\powershell\build-release.ps1 [-Target <triple>] [-OutDir <dir>]
 #
 # Options:
 #   -Target <triple>   Cross-compile target (e.g. x86_64-unknown-linux-musl).
@@ -23,7 +23,7 @@ $ErrorActionPreference = "Stop"
 
 # ── Resolve workspace root ────────────────────────────────────────────────────
 
-$Root = Split-Path -Parent $PSScriptRoot
+$Root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $Root
 
 # ── Build arguments ───────────────────────────────────────────────────────────

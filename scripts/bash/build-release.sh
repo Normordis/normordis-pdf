@@ -2,7 +2,7 @@
 # build-release.sh — Build normordis-pdf library and CLI tools in release mode.
 #
 # Usage:
-#   ./scripts/build-release.sh [--target <triple>] [--out-dir <dir>]
+#   ./scripts/bash/build-release.sh [--target <triple>] [--out-dir <dir>]
 #
 # Options:
 #   --target <triple>   Cross-compile target (e.g. x86_64-unknown-linux-musl).
@@ -35,10 +35,10 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# ── Resolve workspace root (directory that contains this script's parent) ─────
+# ── Resolve workspace root ────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$ROOT"
 
 # ── Build arguments ───────────────────────────────────────────────────────────
