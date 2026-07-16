@@ -215,7 +215,7 @@ fn navigate_pkcs7(data: &[u8]) -> Result<NavResult> {
 
 // ── TSQ builder ───────────────────────────────────────────────────────────────
 
-#[cfg(feature = "tsa")]
+#[cfg(any(feature = "tsa", test))]
 /// Encode a DER `TimeStampReq` that requests a timestamp over `hash`
 /// (SHA-256 of the CMS signature value).
 fn build_timestamp_request(hash: &[u8]) -> Vec<u8> {
