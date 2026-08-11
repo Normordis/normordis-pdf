@@ -27,17 +27,17 @@ pub enum NormordisPdfError {
     #[error("unknown style name: '{0}'")]
     UnknownStyle(String),
 
-    #[error("NDF integrity error: {0}")]
-    NdfIntegrityError(String),
+    #[error("render archive integrity error: {0}")]
+    ArchiveIntegrityError(String),
 
-    #[error("NDF audit chain error: {0}")]
-    NdfAuditError(String),
+    #[error("render archive audit chain error: {0}")]
+    ArchiveAuditError(String),
 
-    #[error("NDF revision error: {0}")]
-    NdfRevisionError(String),
+    #[error("render archive revision error: {0}")]
+    ArchiveRevisionError(String),
 
-    #[error("NDF compile error: {0}")]
-    NdfCompileError(String),
+    #[error("render archive compile error: {0}")]
+    ArchiveCompileError(String),
 
     #[error("PDF/UA-2 accessibility error: {0}")]
     AccessibilityError(String),

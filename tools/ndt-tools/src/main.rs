@@ -11,7 +11,7 @@ mod cmd {
 #[derive(Parser)]
 #[command(
     name = "ndt-tools",
-    about = "NDT (NORMAXIS Document Template) utilities"
+    about = "NDT (NORMORDIS Document Template) utilities"
 )]
 struct Cli {
     #[command(subcommand)]

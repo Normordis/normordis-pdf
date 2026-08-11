@@ -1,7 +1,7 @@
-use normordis_pdf::ndf::jcs;
+use normordis_pdf::archive::jcs;
 use normordis_pdf::{
-    Actor, AuditEvent, CompileOptions, EventType, NcrtfMark, NdfRevision,
-    canonical_hash, compile_ndt, parse_ncrtf, parse_ndf, render_ndf, verify_ndf,
+    Actor, AuditEvent, CompileOptions, EventType, NcrtfMark, ArchiveRevision,
+    canonical_hash, compile_ndt, parse_ncrtf, parse_archive, render_archive, verify_archive,
 };
 use serde_json::json;
 
@@ -31,7 +31,7 @@ fn minimal_data() -> normordis_pdf::template::NdtData {
     serde_json::from_str(minimal_data_json()).unwrap()
 }
 
-fn simple_ndf() -> normordis_pdf::NdfDocument {
+fn simple_ndf() -> normordis_pdf::RenderArchive {
     compile_ndt(minimal_ndt(), &minimal_data(), CompileOptions::default()).unwrap()
 }
 
@@ -79,59 +79,59 @@ fn fmt_05_canonical_hash_deterministic() {
     assert!(h1.starts_with("sha256:"), "hash must start with 'sha256:'");
 }
 
-// ── 06–10: NdfIntegrity ──────────────────────────────────────────────────────
+// ── 06–10: ArchiveIntegrity ──────────────────────────────────────────────────────
 
 #[test]
 fn fmt_06_integrity_compute_ok() {
-    let ndf = simple_ndf();
-    assert!(!ndf.integrity.content_hash.is_empty());
-    assert!(!ndf.integrity.styles_hash.is_empty());
-    assert!(!ndf.integrity.payload_hash.is_empty());
-    assert!(!ndf.integrity.ndf_hash.is_empty());
-    assert_eq!(ndf.integrity.algorithm, "sha256");
+    let archive = simple_ndf();
+    assert!(!archive.integrity.content_hash.is_empty());
+    assert!(!archive.integrity.styles_hash.is_empty());
+    assert!(!archive.integrity.payload_hash.is_empty());
+    assert!(!archive.integrity.ndf_hash.is_empty());
+    assert_eq!(archive.integrity.algorithm, "sha256");
 }
 
 #[test]
 fn fmt_07_content_hash_matches_canonical_hash_of_content() {
-    let ndf = simple_ndf();
-    let expected = canonical_hash(&ndf.content);
-    assert_eq!(ndf.integrity.content_hash, expected);
+    let archive = simple_ndf();
+    let expected = canonical_hash(&archive.content);
+    assert_eq!(archive.integrity.content_hash, expected);
 }
 
 #[test]
 fn fmt_08_styles_hash_matches_canonical_hash_of_styles() {
-    let ndf = simple_ndf();
-    let expected = canonical_hash(&ndf.styles);
-    assert_eq!(ndf.integrity.styles_hash, expected);
+    let archive = simple_ndf();
+    let expected = canonical_hash(&archive.styles);
+    assert_eq!(archive.integrity.styles_hash, expected);
 }
 
 #[test]
 fn fmt_09_payload_hash_covers_meta_styles_content() {
-    let ndf = simple_ndf();
-    let meta_val = serde_json::to_value(&ndf.meta).unwrap();
+    let archive = simple_ndf();
+    let meta_val = serde_json::to_value(&archive.meta).unwrap();
     let payload_val = json!({
-        "content": ndf.content,
+        "content": archive.content,
         "meta":    meta_val,
-        "styles":  ndf.styles,
+        "styles":  archive.styles,
     });
     let expected = canonical_hash(&payload_val);
-    assert_eq!(ndf.integrity.payload_hash, expected);
+    assert_eq!(archive.integrity.payload_hash, expected);
 }
 
 #[test]
 fn fmt_10_ndf_hash_not_empty_and_different_from_payload_hash() {
-    let ndf = simple_ndf();
-    assert!(!ndf.integrity.ndf_hash.is_empty());
+    let archive = simple_ndf();
+    assert!(!archive.integrity.ndf_hash.is_empty());
     // ndf_hash includes origin etc — must differ from payload_hash
-    assert_ne!(ndf.integrity.ndf_hash, ndf.integrity.payload_hash);
+    assert_ne!(archive.integrity.ndf_hash, archive.integrity.payload_hash);
 }
 
 // ── 11–18: compile_ndt ───────────────────────────────────────────────────────
 
 #[test]
 fn fmt_11_compile_ndt_json_ok() {
-    let ndf = compile_ndt(minimal_ndt(), &minimal_data(), CompileOptions::default());
-    assert!(ndf.is_ok(), "compile_ndt must return Ok: {:?}", ndf.err());
+    let archive = compile_ndt(minimal_ndt(), &minimal_data(), CompileOptions::default());
+    assert!(archive.is_ok(), "compile_ndt must return Ok: {:?}", archive.err());
 }
 
 #[test]
@@ -151,18 +151,18 @@ repeticao = "unica"
 "#;
     let data: normordis_pdf::template::NdtData =
         serde_json::from_str(r#"{"ndt_data":"1.0.0","data":{}}"#).unwrap();
-    let ndf = compile_ndt(toml, &data, CompileOptions::default());
+    let archive = compile_ndt(toml, &data, CompileOptions::default());
     assert!(
-        ndf.is_ok(),
+        archive.is_ok(),
         "compile_ndt TOML must return Ok: {:?}",
-        ndf.err()
+        archive.err()
     );
 }
 
 #[test]
 fn fmt_13_compile_ndt_resolves_placeholders() {
-    let ndf = simple_ndf();
-    let content_str = serde_json::to_string(&ndf.content).unwrap();
+    let archive = simple_ndf();
+    let content_str = serde_json::to_string(&archive.content).unwrap();
     assert!(
         content_str.contains("World"),
         "{{name}} must be resolved to 'World'"
@@ -198,41 +198,41 @@ fn fmt_15_compile_ndt_validate_resolved_false_allows_remaining() {
 
 #[test]
 fn fmt_16_compile_ndt_ndf_version() {
-    let ndf = simple_ndf();
-    assert_eq!(ndf.ndf, "1.1.0");
+    let archive = simple_ndf();
+    assert_eq!(archive.archive, "1.1.0");
 }
 
 #[test]
 fn fmt_17_compile_ndt_audit_has_one_generated_event() {
-    let ndf = simple_ndf();
-    assert_eq!(ndf.audit.events.len(), 1);
-    assert_eq!(ndf.audit.events[0].event_type, EventType::DocumentGenerated);
-    assert_eq!(ndf.audit.events[0].seq, 1);
+    let archive = simple_ndf();
+    assert_eq!(archive.audit.events.len(), 1);
+    assert_eq!(archive.audit.events[0].event_type, EventType::DocumentGenerated);
+    assert_eq!(archive.audit.events[0].seq, 1);
 }
 
 #[test]
 fn fmt_18_compile_ndt_content_hash_not_empty() {
-    let ndf = simple_ndf();
-    assert!(!ndf.integrity.content_hash.is_empty());
-    assert!(ndf.integrity.content_hash.starts_with("sha256:"));
+    let archive = simple_ndf();
+    assert!(!archive.integrity.content_hash.is_empty());
+    assert!(archive.integrity.content_hash.starts_with("sha256:"));
 }
 
-// ── 19–22: render_ndf / parse_ndf ────────────────────────────────────────────
+// ── 19–22: render_archive / parse_archive ────────────────────────────────────────────
 
 #[test]
-fn fmt_19_render_ndf_returns_bytes() {
-    let ndf = simple_ndf();
-    let json = ndf.to_canonical_json().unwrap();
-    let pdf = render_ndf(&json);
-    assert!(pdf.is_ok(), "render_ndf must return Ok: {:?}", pdf.err());
+fn fmt_19_render_archive_returns_bytes() {
+    let archive = simple_ndf();
+    let json = archive.to_canonical_json().unwrap();
+    let pdf = render_archive(&json);
+    assert!(pdf.is_ok(), "render_archive must return Ok: {:?}", pdf.err());
     assert!(!pdf.unwrap().is_empty());
 }
 
 #[test]
-fn fmt_20_render_ndf_starts_with_pdf_header() {
-    let ndf = simple_ndf();
-    let json = ndf.to_canonical_json().unwrap();
-    let pdf = render_ndf(&json).unwrap();
+fn fmt_20_render_archive_starts_with_pdf_header() {
+    let archive = simple_ndf();
+    let json = archive.to_canonical_json().unwrap();
+    let pdf = render_archive(&json).unwrap();
     assert!(
         pdf.starts_with(b"%PDF-"),
         "rendered bytes must start with %PDF-"
@@ -240,43 +240,43 @@ fn fmt_20_render_ndf_starts_with_pdf_header() {
 }
 
 #[test]
-fn fmt_21_parse_ndf_from_canonical_json_roundtrip() {
-    let ndf = simple_ndf();
-    let canonical = ndf.to_canonical_json().unwrap();
-    let restored = parse_ndf(&canonical).unwrap();
-    assert_eq!(restored.ndf, ndf.ndf);
-    assert_eq!(restored.meta.title, ndf.meta.title);
-    assert_eq!(restored.integrity.content_hash, ndf.integrity.content_hash);
+fn fmt_21_parse_archive_from_canonical_json_roundtrip() {
+    let archive = simple_ndf();
+    let canonical = archive.to_canonical_json().unwrap();
+    let restored = parse_archive(&canonical).unwrap();
+    assert_eq!(restored.archive, archive.archive);
+    assert_eq!(restored.meta.title, archive.meta.title);
+    assert_eq!(restored.integrity.content_hash, archive.integrity.content_hash);
 }
 
 #[test]
-fn fmt_22_parse_ndf_from_pretty_json_roundtrip() {
-    let ndf = simple_ndf();
-    let pretty = ndf.to_pretty_json().unwrap();
-    let restored = parse_ndf(&pretty).unwrap();
-    assert_eq!(restored.integrity.ndf_hash, ndf.integrity.ndf_hash);
+fn fmt_22_parse_archive_from_pretty_json_roundtrip() {
+    let archive = simple_ndf();
+    let pretty = archive.to_pretty_json().unwrap();
+    let restored = parse_archive(&pretty).unwrap();
+    assert_eq!(restored.integrity.ndf_hash, archive.integrity.ndf_hash);
 }
 
-// ── 23–25: verify_ndf ────────────────────────────────────────────────────────
+// ── 23–25: verify_archive ────────────────────────────────────────────────────────
 
 #[test]
-fn fmt_23_verify_ndf_intact_all_valid() {
-    let ndf = simple_ndf();
-    let json = ndf.to_pretty_json().unwrap();
-    let report = verify_ndf(&json).unwrap();
+fn fmt_23_verify_archive_intact_all_valid() {
+    let archive = simple_ndf();
+    let json = archive.to_pretty_json().unwrap();
+    let report = verify_archive(&json).unwrap();
     assert!(
         report.all_valid,
-        "integrity must be valid for unmodified NDF; failures: {:?}",
+        "integrity must be valid for unmodified archive; failures: {:?}",
         report.failures
     );
 }
 
 #[test]
-fn fmt_24_verify_ndf_tampered_content_fails() {
-    let mut ndf = simple_ndf();
-    ndf.content = json!([{"type":"paragraph","text":"TAMPERED"}]);
-    let json = ndf.to_pretty_json().unwrap();
-    let report = verify_ndf(&json).unwrap();
+fn fmt_24_verify_archive_tampered_content_fails() {
+    let mut archive = simple_ndf();
+    archive.content = json!([{"type":"paragraph","text":"TAMPERED"}]);
+    let json = archive.to_pretty_json().unwrap();
+    let report = verify_archive(&json).unwrap();
     assert!(
         !report.content_hash_valid,
         "tampered content must fail content_hash check"
@@ -285,22 +285,22 @@ fn fmt_24_verify_ndf_tampered_content_fails() {
 }
 
 #[test]
-fn fmt_25_verify_ndf_tampered_styles_fails() {
-    let mut ndf = simple_ndf();
-    ndf.styles = json!({"font_size_body": 99.0});
-    let json = ndf.to_pretty_json().unwrap();
-    let report = verify_ndf(&json).unwrap();
+fn fmt_25_verify_archive_tampered_styles_fails() {
+    let mut archive = simple_ndf();
+    archive.styles = json!({"font_size_body": 99.0});
+    let json = archive.to_pretty_json().unwrap();
+    let report = verify_archive(&json).unwrap();
     assert!(
         !report.styles_hash_valid,
         "tampered styles must fail styles_hash check"
     );
 }
 
-// ── 26–29: NdfDocument::add_event ────────────────────────────────────────────
+// ── 26–29: RenderArchive::add_event ────────────────────────────────────────────
 
 #[test]
 fn fmt_26_add_event_correct_hash_ok() {
-    let mut ndf = simple_ndf();
+    let mut archive = simple_ndf();
     let event = AuditEvent {
         seq: 0,
         event_type: EventType::DocumentReviewed,
@@ -310,17 +310,17 @@ fn fmt_26_add_event_correct_hash_ok() {
             version: None,
             instance_id: None,
         },
-        content_hash: Some(ndf.integrity.content_hash.clone()),
+        content_hash: Some(archive.integrity.content_hash.clone()),
         note: None,
         extra: Default::default(),
     };
-    assert!(ndf.add_event(event).is_ok());
-    assert_eq!(ndf.audit.events.len(), 2);
+    assert!(archive.add_event(event).is_ok());
+    assert_eq!(archive.audit.events.len(), 2);
 }
 
 #[test]
 fn fmt_27_add_event_wrong_hash_errors() {
-    let mut ndf = simple_ndf();
+    let mut archive = simple_ndf();
     let event = AuditEvent {
         seq: 0,
         event_type: EventType::DocumentReviewed,
@@ -334,13 +334,13 @@ fn fmt_27_add_event_wrong_hash_errors() {
         note: None,
         extra: Default::default(),
     };
-    assert!(ndf.add_event(event).is_err(), "wrong hash must return Err");
+    assert!(archive.add_event(event).is_err(), "wrong hash must return Err");
 }
 
 #[test]
 fn fmt_28_add_event_increments_seq() {
-    let mut ndf = simple_ndf();
-    assert_eq!(ndf.audit.events.last().unwrap().seq, 1);
+    let mut archive = simple_ndf();
+    assert_eq!(archive.audit.events.last().unwrap().seq, 1);
     let event = AuditEvent {
         seq: 0,
         event_type: EventType::DocumentApproved,
@@ -350,17 +350,17 @@ fn fmt_28_add_event_increments_seq() {
             version: None,
             instance_id: None,
         },
-        content_hash: Some(ndf.integrity.content_hash.clone()),
+        content_hash: Some(archive.integrity.content_hash.clone()),
         note: None,
         extra: Default::default(),
     };
-    ndf.add_event(event).unwrap();
-    assert_eq!(ndf.audit.events.last().unwrap().seq, 2);
+    archive.add_event(event).unwrap();
+    assert_eq!(archive.audit.events.last().unwrap().seq, 2);
 }
 
 #[test]
 fn fmt_29_add_event_non_monotonic_timestamp_errors() {
-    let mut ndf = simple_ndf();
+    let mut archive = simple_ndf();
     let past = "2000-01-01T00:00:00Z".to_string();
     let event = AuditEvent {
         seq: 0,
@@ -376,12 +376,12 @@ fn fmt_29_add_event_non_monotonic_timestamp_errors() {
         extra: Default::default(),
     };
     assert!(
-        ndf.add_event(event).is_err(),
+        archive.add_event(event).is_err(),
         "past timestamp must return Err"
     );
 }
 
-// ── 30–33: NdfRevision::create_from ──────────────────────────────────────────
+// ── 30–33: ArchiveRevision::create_from ──────────────────────────────────────────
 
 #[test]
 fn fmt_30_revision_seq_is_2_for_original() {
@@ -391,7 +391,7 @@ fn fmt_30_revision_seq_is_2_for_original() {
         version: None,
         instance_id: None,
     };
-    let revised = NdfRevision::create_from(
+    let revised = ArchiveRevision::create_from(
         &original,
         json!([{"type":"paragraph","text":"Revised content."}]),
         actor,
@@ -413,7 +413,7 @@ fn fmt_31_revision_does_not_modify_original() {
         version: None,
         instance_id: None,
     };
-    let _revised = NdfRevision::create_from(
+    let _revised = ArchiveRevision::create_from(
         &original,
         json!([{"type":"paragraph","text":"Changed."}]),
         actor,
@@ -435,7 +435,7 @@ fn fmt_32_revision_of_matches_original_document_id() {
         version: None,
         instance_id: None,
     };
-    let revised = NdfRevision::create_from(
+    let revised = ArchiveRevision::create_from(
         &original,
         json!([{"type":"paragraph","text":"New."}]),
         actor,
@@ -454,7 +454,7 @@ fn fmt_33_revised_content_hash_differs_from_original() {
         version: None,
         instance_id: None,
     };
-    let revised = NdfRevision::create_from(
+    let revised = ArchiveRevision::create_from(
         &original,
         json!([{"type":"paragraph","text":"Completely different content."}]),
         actor,

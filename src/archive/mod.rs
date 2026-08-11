@@ -4,10 +4,10 @@ pub mod jcs;
 pub mod registry;
 pub mod revision;
 
-pub use audit::{Actor, AuditEvent, EventType, NdfAudit};
-pub use integrity::{IntegrityFailure, IntegrityReport, NdfIntegrity, canonical_hash};
-pub use registry::{NdfFilter, NdfRecord, NdfRecordStatus, NdfRecordSummary, NdfRegistry};
-pub use revision::NdfRevision;
+pub use audit::{Actor, AuditEvent, EventType, ArchiveAudit};
+pub use integrity::{IntegrityFailure, IntegrityReport, ArchiveIntegrity, canonical_hash};
+pub use registry::{ArchiveFilter, ArchiveRecord, ArchiveRecordStatus, ArchiveRecordSummary, ArchiveRegistry};
+pub use revision::ArchiveRevision;
 
 use base64::Engine as _;
 
@@ -16,25 +16,32 @@ use serde_json::Value;
 
 use crate::NormordisPdfError;
 
-/// NDF format version produced by this engine.
-pub const NDF_VERSION: &str = "1.1.0";
+/// Render archive format version produced by this engine.
+pub const ARCHIVE_VERSION: &str = "1.1.0";
 
-/// A fully resolved NORMAXIS Document Format (NDF) archive.
+/// A fully resolved NORMORDIS render archive.
+///
+/// Not to be confused with the NDF (NORMORDIS Document Format) specification:
+/// this is the engine's self-contained render bundle — template provenance,
+/// resolved data, styles, integrity, audit chain, outputs and signatures.
 ///
 /// Immutable fields after creation: `origin`, `revision`, `meta`, `output`,
 /// `styles`, `content`, `integrity`.
 /// Append-only fields: `audit.events`, `outputs`, `signatures`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NdfDocument {
-    /// NDF format version. Always "1.1.0" for documents created by this engine.
-    pub ndf: String,
+pub struct RenderArchive {
+    /// Render archive format version. Always "1.1.0" for archives created by this engine.
+    /// Serialised as `archive`; `archive` is accepted on read for archives written by
+    /// releases before the rename (see CHANGELOG, R14).
+    #[serde(rename = "archive", alias = "archive")]
+    pub archive: String,
     /// Generation traceability — engine, template, actor. Immutable.
-    pub origin: NdfOrigin,
+    pub origin: ArchiveOrigin,
     /// Revision reference. None for original documents. Immutable.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub revision: Option<NdfRevisionRef>,
+    pub revision: Option<ArchiveRevisionRef>,
     /// Document metadata with resolved values. Immutable.
-    pub meta: NdfMeta,
+    pub meta: ArchiveMeta,
     /// PDF output options from the NDT template. Immutable.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub output: Option<Value>,
@@ -43,24 +50,24 @@ pub struct NdfDocument {
     /// Resolved document body (all placeholders substituted) as canonical JSON. Immutable.
     pub content: Value,
     /// Integrity hashes over canonical JSON. Immutable.
-    pub integrity: NdfIntegrity,
+    pub integrity: ArchiveIntegrity,
     /// Append-only audit chain.
-    pub audit: NdfAudit,
+    pub audit: ArchiveAudit,
     /// Append-only list of rendered outputs.
     #[serde(default)]
-    pub outputs: Vec<NdfOutput>,
+    pub outputs: Vec<ArchiveOutput>,
     /// Append-only list of digital signatures.
     #[serde(default)]
-    pub signatures: Vec<NdfSignature>,
+    pub signatures: Vec<ArchiveSignature>,
     /// NDT page configuration (header/footer). Stored for historical regeneration. Immutable.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub page: Option<Value>,
     /// Custom font families embedded as base64 for self-contained historical regeneration.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub embedded_fonts: Vec<NdfEmbeddedFont>,
+    pub embedded_fonts: Vec<ArchiveEmbeddedFont>,
 }
 
-impl NdfDocument {
+impl RenderArchive {
     /// Serialises to canonical JSON per RFC 8785 / JCS.
     pub fn to_canonical_json(&self) -> crate::Result<String> {
         let value =
@@ -77,7 +84,7 @@ impl NdfDocument {
     /// Appends an audit event, verifying content_hash for documentary events.
     pub fn add_event(&mut self, event: AuditEvent) -> crate::Result<()> {
         if let Some(ref hash) = event.content_hash && hash != &self.integrity.content_hash {
-            return Err(NormordisPdfError::NdfAuditError(format!(
+            return Err(NormordisPdfError::ArchiveAuditError(format!(
                 "content_hash mismatch at event seq {} — content has been modified",
                 self.audit.next_seq()
             )));
@@ -86,13 +93,13 @@ impl NdfDocument {
     }
 
     /// Appends an output record.
-    pub fn add_output(&mut self, output: NdfOutput) -> crate::Result<()> {
+    pub fn add_output(&mut self, output: ArchiveOutput) -> crate::Result<()> {
         self.outputs.push(output);
         Ok(())
     }
 
     /// Appends a signature record.
-    pub fn add_signature(&mut self, sig: NdfSignature) -> crate::Result<()> {
+    pub fn add_signature(&mut self, sig: ArchiveSignature) -> crate::Result<()> {
         self.signatures.push(sig);
         Ok(())
     }
@@ -124,7 +131,7 @@ impl NdfDocument {
         self.revision.is_some()
     }
 
-    /// Embed a custom font family into this NDF for self-contained historical regeneration.
+    /// Embed a custom font family into this archive for self-contained historical regeneration.
     ///
     /// Call this after [`compile_ndt`] for each non-built-in font used in the template.
     /// Built-in fonts (Liberation Sans/Serif/Mono, Libertinus Serif) do not need embedding.
@@ -136,7 +143,7 @@ impl NdfDocument {
         italic: Option<&[u8]>,
         bold_italic: Option<&[u8]>,
     ) {
-        self.embedded_fonts.push(NdfEmbeddedFont::from_bytes(
+        self.embedded_fonts.push(ArchiveEmbeddedFont::from_bytes(
             family,
             regular,
             bold,
@@ -146,14 +153,14 @@ impl NdfDocument {
     }
 }
 
-// ── NdfEmbeddedFont ───────────────────────────────────────────────────────────
+// ── ArchiveEmbeddedFont ───────────────────────────────────────────────────────────
 
-/// A custom font family embedded in an NDF archive as base64-encoded TTF/OTF bytes.
+/// A custom font family embedded in a render archive as base64-encoded TTF/OTF bytes.
 ///
-/// Store in [`NdfDocument::embedded_fonts`] so the document is self-contained
+/// Store in [`RenderArchive::embedded_fonts`] so the document is self-contained
 /// for historical regeneration without external font files.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NdfEmbeddedFont {
+pub struct ArchiveEmbeddedFont {
     /// Font family name as used in the template (e.g. `"Roboto"`, `"FiraSans"`).
     pub family: String,
     /// Regular variant — base64-encoded TTF/OTF. Required.
@@ -169,8 +176,8 @@ pub struct NdfEmbeddedFont {
     pub bold_italic: Option<String>,
 }
 
-impl NdfEmbeddedFont {
-    /// Encode raw font bytes into an [`NdfEmbeddedFont`] record.
+impl ArchiveEmbeddedFont {
+    /// Encode raw font bytes into an [`ArchiveEmbeddedFont`] record.
     pub fn from_bytes(
         family: &str,
         regular: &[u8],
@@ -192,7 +199,7 @@ impl NdfEmbeddedFont {
 // ── Supporting types ──────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NdfOrigin {
+pub struct ArchiveOrigin {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ndt_template_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -216,7 +223,7 @@ fn default_classification() -> String {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NdfMeta {
+pub struct ArchiveMeta {
     pub title: String,
     #[serde(default)]
     pub entity: String,
@@ -245,11 +252,11 @@ pub struct NdfMeta {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub compat_mode: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub numbering: Option<NdfMetaNumbering>,
+    pub numbering: Option<ArchiveMetaNumbering>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NdfMetaNumbering {
+pub struct ArchiveMetaNumbering {
     pub numbering_ref: String,
     pub document_number: String,
     pub sequence_id: String,
@@ -257,14 +264,14 @@ pub struct NdfMetaNumbering {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NdfRevisionRef {
+pub struct ArchiveRevisionRef {
     pub revision_of: String,
     pub revision_reason: String,
     pub revision_seq: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NdfOutput {
+pub struct ArchiveOutput {
     pub format: String,
     pub sha256: String,
     pub size_bytes: u64,
@@ -274,7 +281,7 @@ pub struct NdfOutput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NdfSignature {
+pub struct ArchiveSignature {
     pub algorithm: String,
     pub signer: String,
     pub signed_at: String,

@@ -5,16 +5,16 @@ use serde_json::Value;
 
 use crate::NormordisPdfError;
 
-/// Append-only audit chain for an NDF document.
+/// Append-only audit chain for a render archive.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NdfAudit {
+pub struct ArchiveAudit {
     /// Unique, immutable document identifier.
     pub document_id: String,
     /// Append-only event list.
     pub events: Vec<AuditEvent>,
 }
 
-impl NdfAudit {
+impl ArchiveAudit {
     pub fn next_seq(&self) -> u32 {
         self.events.len() as u32 + 1
     }
@@ -25,13 +25,13 @@ impl NdfAudit {
         if event.seq == 0 {
             event.seq = expected;
         } else if event.seq != expected {
-            return Err(NormordisPdfError::NdfAuditError(format!(
+            return Err(NormordisPdfError::ArchiveAuditError(format!(
                 "expected seq {expected}, got {}",
                 event.seq
             )));
         }
         if let Some(last) = self.events.last() && event.timestamp < last.timestamp {
-            return Err(NormordisPdfError::NdfAuditError(format!(
+            return Err(NormordisPdfError::ArchiveAuditError(format!(
                 "non-monotonic timestamp at seq {} ({} < {})",
                 event.seq, event.timestamp, last.timestamp
             )));
@@ -74,7 +74,7 @@ impl AuditEvent {
                 | EventType::DocumentApproved
                 | EventType::DocumentRejected
                 | EventType::SignaturePdfApplied
-                | EventType::SignatureNdfApplied
+                | EventType::SignatureArchiveApplied
         )
     }
 }
@@ -96,8 +96,8 @@ pub enum EventType {
     RenderPdfGenerated,
     #[serde(rename = "signature.pdf.applied")]
     SignaturePdfApplied,
-    #[serde(rename = "signature.ndf.applied")]
-    SignatureNdfApplied,
+    #[serde(rename = "signature.archive.applied", alias = "signature.archive.applied")]
+    SignatureArchiveApplied,
     #[serde(rename = "archive.stored")]
     ArchiveStored,
     #[serde(rename = "publication.sent")]

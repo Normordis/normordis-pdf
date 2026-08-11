@@ -4,16 +4,16 @@ use serde_json::Value;
 
 use super::data::NdtData;
 use super::resolver;
-use crate::ndf::{
-    NDF_VERSION, NdfDocument, NdfEmbeddedFont, NdfMeta, NdfOrigin,
-    audit::{Actor, AuditEvent, EventType, NdfAudit},
-    integrity::{NdfIntegrity, canonical_hash},
+use crate::archive::{
+    ARCHIVE_VERSION, RenderArchive, ArchiveEmbeddedFont, ArchiveMeta, ArchiveOrigin,
+    audit::{Actor, AuditEvent, EventType, ArchiveAudit},
+    integrity::{ArchiveIntegrity, canonical_hash},
 };
 use crate::{NormordisPdfError, Result};
 
 // ── CompileOptions ────────────────────────────────────────────────────────────
 
-/// Options controlling how `compile_ndt()` builds an `NdfDocument`.
+/// Options controlling how `compile_ndt()` builds an `RenderArchive`.
 #[derive(Debug, Clone)]
 pub struct CompileOptions {
     /// Unique document identifier.
@@ -52,7 +52,7 @@ impl Default for CompileOptions {
 
 // ── compile_ndt ───────────────────────────────────────────────────────────────
 
-/// Compiles an NDT template + data into a fully resolved `NdfDocument`.
+/// Compiles an NDT template + data into a fully resolved `RenderArchive`.
 ///
 /// Pipeline:
 /// 1. Parse NDT (JSON or TOML)
@@ -60,13 +60,13 @@ impl Default for CompileOptions {
 /// 3. Deep-substitute `{{placeholders}}` in all body string fields
 /// 4. Check no unresolved placeholders remain (`validate_resolved`)
 /// 5. Compute integrity hashes (RFC 8785 / JCS)
-/// 6. Build and return `NdfDocument`
+/// 6. Build and return `RenderArchive`
 ///
-/// After calling this, use [`NdfDocument::embed_font`] for any custom fonts
-/// used in the template before persisting the NDF.
-pub fn compile_ndt(ndt: &str, data: &NdtData, options: CompileOptions) -> Result<NdfDocument> {
+/// After calling this, use [`RenderArchive::embed_font`] for any custom fonts
+/// used in the template before persisting the archive.
+pub fn compile_ndt(ndt: &str, data: &NdtData, options: CompileOptions) -> Result<RenderArchive> {
     let doc =
-        super::parse_ndt(ndt).map_err(|e| NormordisPdfError::NdfCompileError(e.to_string()))?;
+        super::parse_ndt(ndt).map_err(|e| NormordisPdfError::ArchiveCompileError(e.to_string()))?;
 
     // Serialize and resolve paginas_def + estilos
     let content_val = serde_json::to_value(&doc.paginas_def)
@@ -81,7 +81,7 @@ pub fn compile_ndt(ndt: &str, data: &NdtData, options: CompileOptions) -> Result
             .map_err(|e| NormordisPdfError::SerdeError(e.to_string()))?;
         let re = Regex::new(r"\{\{[a-zA-Z0-9_.]+\}\}").expect("static regex");
         if let Some(m) = re.find(&content_str) {
-            return Err(NormordisPdfError::NdfCompileError(format!(
+            return Err(NormordisPdfError::ArchiveCompileError(format!(
                 "unresolved placeholder '{}' in content after substitution",
                 m.as_str()
             )));
@@ -91,7 +91,7 @@ pub fn compile_ndt(ndt: &str, data: &NdtData, options: CompileOptions) -> Result
     let now = chrono::Utc::now().to_rfc3339();
 
     let meta_title = doc.titulo.clone().unwrap_or_default();
-    let meta = NdfMeta {
+    let meta = ArchiveMeta {
         title: meta_title,
         entity: String::new(),
         entity_id: None,
@@ -111,7 +111,7 @@ pub fn compile_ndt(ndt: &str, data: &NdtData, options: CompileOptions) -> Result
     let meta_val =
         serde_json::to_value(&meta).map_err(|e| NormordisPdfError::SerdeError(e.to_string()))?;
 
-    let integrity = NdfIntegrity::compute(&resolved_content, &styles_val, &meta_val)?;
+    let integrity = ArchiveIntegrity::compute(&resolved_content, &styles_val, &meta_val)?;
     let document_id = options
         .document_id
         .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
@@ -131,9 +131,9 @@ pub fn compile_ndt(ndt: &str, data: &NdtData, options: CompileOptions) -> Result
         extra: Default::default(),
     };
 
-    Ok(NdfDocument {
-        ndf: NDF_VERSION.into(),
-        origin: NdfOrigin {
+    Ok(RenderArchive {
+        archive: ARCHIVE_VERSION.into(),
+        origin: ArchiveOrigin {
             ndt_template_id: options.ndt_template_id,
             ndt_version: None,
             ndt_template_hash: Some(ndt_template_hash),
@@ -151,7 +151,7 @@ pub fn compile_ndt(ndt: &str, data: &NdtData, options: CompileOptions) -> Result
         page: None,
         embedded_fonts: vec![],
         integrity,
-        audit: NdfAudit {
+        audit: ArchiveAudit {
             document_id,
             events: vec![first_event],
         },
@@ -160,48 +160,48 @@ pub fn compile_ndt(ndt: &str, data: &NdtData, options: CompileOptions) -> Result
     })
 }
 
-// ── parse_ndf / verify_ndf ────────────────────────────────────────────────────
+// ── parse_archive / verify_archive ────────────────────────────────────────────────────
 
-/// Parses an NDF document from JSON (canonical or pretty-printed).
-pub fn parse_ndf(json: &str) -> Result<NdfDocument> {
+/// Parses a render archive from JSON (canonical or pretty-printed).
+pub fn parse_archive(json: &str) -> Result<RenderArchive> {
     serde_json::from_str(json).map_err(|e| NormordisPdfError::SerdeError(e.to_string()))
 }
 
-/// Verifies the integrity hashes of an NDF document.
-pub fn verify_ndf(json: &str) -> Result<crate::ndf::integrity::IntegrityReport> {
-    let ndf = parse_ndf(json)?;
-    ndf.verify_integrity()
+/// Verifies the integrity hashes of a render archive.
+pub fn verify_archive(json: &str) -> Result<crate::archive::integrity::IntegrityReport> {
+    let archive = parse_archive(json)?;
+    archive.verify_integrity()
 }
 
-// ── render_ndf ────────────────────────────────────────────────────────────────
+// ── render_archive ────────────────────────────────────────────────────────────────
 
-/// Renders an NDF document to PDF bytes.
+/// Renders a render archive to PDF bytes.
 ///
-/// Fonts embedded in `ndf.embedded_fonts` are loaded automatically.
-/// For additional or override fonts, use [`render_ndf_with_fonts`].
-pub fn render_ndf(ndf_json: &str) -> Result<Vec<u8>> {
-    render_ndf_inner(ndf_json, None)
+/// Fonts embedded in `archive.embedded_fonts` are loaded automatically.
+/// For additional or override fonts, use [`render_archive_with_fonts`].
+pub fn render_archive(archive_json: &str) -> Result<Vec<u8>> {
+    render_archive_inner(archive_json, None)
 }
 
-/// Renders an NDF document to PDF bytes, supplementing with an external font registry.
+/// Renders a render archive to PDF bytes, supplementing with an external font registry.
 ///
-/// Fonts in `extra` take precedence over fonts embedded in the NDF.
-/// Use this when the NDF was archived without embedding font bytes and the
+/// Fonts in `extra` take precedence over fonts embedded in the archive.
+/// Use this when the archive was written without embedding font bytes and the
 /// original fonts are available at render time.
-pub fn render_ndf_with_fonts(
-    ndf_json: &str,
+pub fn render_archive_with_fonts(
+    archive_json: &str,
     extra: &crate::fonts::FontRegistry,
 ) -> Result<Vec<u8>> {
-    render_ndf_inner(ndf_json, Some(extra))
+    render_archive_inner(archive_json, Some(extra))
 }
 
-fn render_ndf_inner(
-    ndf_json: &str,
+fn render_archive_inner(
+    archive_json: &str,
     extra_fonts: Option<&crate::fonts::FontRegistry>,
 ) -> Result<Vec<u8>> {
-    let ndf = parse_ndf(ndf_json)?;
-    let (body, fonts) = rebuild_body_elements_and_fonts(&ndf, extra_fonts)?;
-    let (standard, compression, accessibility) = parse_output_options(ndf.output.as_ref());
+    let archive = parse_archive(archive_json)?;
+    let (body, fonts) = rebuild_body_elements_and_fonts(&archive, extra_fonts)?;
+    let (standard, compression, accessibility) = parse_output_options(archive.output.as_ref());
 
     let style = crate::styles::DocumentStyle::default();
     let empty_data = empty_ndt_data();
@@ -209,7 +209,7 @@ fn render_ndf_inner(
         .map_err(|e| NormordisPdfError::Template(e.to_string()))?;
 
     crate::document::Document {
-        title: ndf.meta.title,
+        title: archive.meta.title,
         style,
         fonts,
         header: None,
@@ -229,33 +229,33 @@ fn render_ndf_inner(
     .render_to_bytes()
 }
 
-// ── render_ndf_prepared_for_signing ──────────────────────────────────────────
+// ── render_archive_prepared_for_signing ──────────────────────────────────────────
 
-/// Renders an NDF document to a [`PreparedPdf`] ready for external PKCS#7 signing.
-pub fn render_ndf_prepared_for_signing(
-    ndf_json: &str,
+/// Renders a render archive to a [`PreparedPdf`] ready for external PKCS#7 signing.
+pub fn render_archive_prepared_for_signing(
+    archive_json: &str,
     opts: crate::signing::SignatureOptions,
 ) -> Result<crate::signing::PreparedPdf> {
-    render_ndf_prepared_for_signing_inner(ndf_json, opts, None)
+    render_archive_prepared_for_signing_inner(archive_json, opts, None)
 }
 
-/// Renders an NDF document to a [`PreparedPdf`], supplementing with an external font registry.
-pub fn render_ndf_prepared_for_signing_with_fonts(
-    ndf_json: &str,
+/// Renders a render archive to a [`PreparedPdf`], supplementing with an external font registry.
+pub fn render_archive_prepared_for_signing_with_fonts(
+    archive_json: &str,
     opts: crate::signing::SignatureOptions,
     extra: &crate::fonts::FontRegistry,
 ) -> Result<crate::signing::PreparedPdf> {
-    render_ndf_prepared_for_signing_inner(ndf_json, opts, Some(extra))
+    render_archive_prepared_for_signing_inner(archive_json, opts, Some(extra))
 }
 
-fn render_ndf_prepared_for_signing_inner(
-    ndf_json: &str,
+fn render_archive_prepared_for_signing_inner(
+    archive_json: &str,
     opts: crate::signing::SignatureOptions,
     extra_fonts: Option<&crate::fonts::FontRegistry>,
 ) -> Result<crate::signing::PreparedPdf> {
-    let ndf = parse_ndf(ndf_json)?;
-    let (body, fonts) = rebuild_body_elements_and_fonts(&ndf, extra_fonts)?;
-    let (standard, compression, accessibility) = parse_output_options(ndf.output.as_ref());
+    let archive = parse_archive(archive_json)?;
+    let (body, fonts) = rebuild_body_elements_and_fonts(&archive, extra_fonts)?;
+    let (standard, compression, accessibility) = parse_output_options(archive.output.as_ref());
 
     let style = crate::styles::DocumentStyle::default();
     let empty_data = empty_ndt_data();
@@ -263,7 +263,7 @@ fn render_ndf_prepared_for_signing_inner(
         .map_err(|e| NormordisPdfError::Template(e.to_string()))?;
 
     crate::document::Document {
-        title: ndf.meta.title,
+        title: archive.meta.title,
         style,
         fonts,
         header: None,
@@ -285,18 +285,18 @@ fn render_ndf_prepared_for_signing_inner(
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-/// Reconstruct legacy body elements and a `FontRegistry` from a parsed NDF.
+/// Reconstruct legacy body elements and a `FontRegistry` from a parsed render archive.
 fn rebuild_body_elements_and_fonts(
-    ndf: &NdfDocument,
+    archive: &RenderArchive,
     extra_fonts: Option<&crate::fonts::FontRegistry>,
 ) -> Result<(Vec<super::model::legacy_body::BodyElement>, crate::fonts::FontRegistry)> {
-    // Graceful fallback: NDFs compiled from NDT 2.0.0 paginas_def content won't
+    // Graceful fallback: archives compiled from NDT 2.0.0 paginas_def content won't
     // deserialize as BodyElement; return empty body so rendering still succeeds.
     let body: Vec<super::model::legacy_body::BodyElement> =
-        serde_json::from_value(ndf.content.clone()).unwrap_or_default();
+        serde_json::from_value(archive.content.clone()).unwrap_or_default();
 
     let mut fonts = crate::fonts::FontRegistry::default();
-    for ef in &ndf.embedded_fonts {
+    for ef in &archive.embedded_fonts {
         decode_and_register_font(ef, &mut fonts)?;
     }
     if let Some(extra) = extra_fonts {
@@ -308,9 +308,9 @@ fn rebuild_body_elements_and_fonts(
     Ok((body, fonts))
 }
 
-/// Decode a base64-encoded [`NdfEmbeddedFont`] and register it in the registry.
+/// Decode a base64-encoded [`ArchiveEmbeddedFont`] and register it in the registry.
 fn decode_and_register_font(
-    ef: &NdfEmbeddedFont,
+    ef: &ArchiveEmbeddedFont,
     fonts: &mut crate::fonts::FontRegistry,
 ) -> Result<()> {
     let dec = base64::engine::general_purpose::STANDARD;
@@ -350,7 +350,7 @@ fn decode_and_register_font(
     )
 }
 
-/// Parse PDF output options from the NDF `output` field.
+/// Parse PDF output options from the archive `output` field.
 fn parse_output_options(
     output: Option<&Value>,
 ) -> (
