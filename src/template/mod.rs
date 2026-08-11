@@ -10,11 +10,11 @@ pub use model::NdtDocument;
 pub use registry::TemplateFilter;
 pub use renderer::render_template;
 
-pub use ndf_pipeline::{
-    CompileOptions, compile_ndt, parse_ndf, render_ndf, render_ndf_prepared_for_signing,
-    render_ndf_prepared_for_signing_with_fonts, render_ndf_with_fonts, verify_ndf,
+pub use archive_pipeline::{
+    CompileOptions, compile_ndt, parse_archive, render_archive, render_archive_prepared_for_signing,
+    render_archive_prepared_for_signing_with_fonts, render_archive_with_fonts, verify_archive,
 };
-mod ndf_pipeline;
+mod archive_pipeline;
 
 pub const ENGINE_NDT_VERSION: &str = "2.0.0";
 pub const ENGINE_NDT_DATA_VERSION: &str = "1.0.0";

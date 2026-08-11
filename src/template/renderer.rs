@@ -54,7 +54,7 @@ pub fn render_template(
     ))
 }
 
-/// Render a legacy body element list (used by the NDF pipeline internally).
+/// Render a legacy body element list (used by the render archive pipeline internally).
 pub(crate) fn render_body_elements(
     body: &[BodyElement],
     data: &NdtData,

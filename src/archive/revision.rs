@@ -1,29 +1,29 @@
 use serde_json::Value;
 
 use super::{
-    NDF_VERSION, NdfDocument, NdfRevisionRef,
-    audit::{Actor, AuditEvent, EventType, NdfAudit},
-    integrity::NdfIntegrity,
+    ARCHIVE_VERSION, RenderArchive, ArchiveRevisionRef,
+    audit::{Actor, AuditEvent, EventType, ArchiveAudit},
+    integrity::ArchiveIntegrity,
 };
 use crate::NormordisPdfError;
 
-/// Creates a revised NDF from an existing one.
+/// Creates a revised archive from an existing one.
 ///
-/// Never modifies the original. Returns a new `NdfDocument` with:
+/// Never modifies the original. Returns a new `RenderArchive` with:
 /// - `revision.revision_of` = original `document_id`
 /// - `revision.revision_seq` = original_seq + 1 (minimum 2)
 /// - New content and recomputed integrity hashes
 /// - A fresh audit chain with a single `document.generated` event
-pub struct NdfRevision;
+pub struct ArchiveRevision;
 
-impl NdfRevision {
+impl ArchiveRevision {
     pub fn create_from(
-        original: &NdfDocument,
+        original: &RenderArchive,
         new_content: Value,
         actor: Actor,
         reason: &str,
         document_id: Option<String>,
-    ) -> crate::Result<NdfDocument> {
+    ) -> crate::Result<RenderArchive> {
         let revision_seq = original
             .revision
             .as_ref()
@@ -31,14 +31,14 @@ impl NdfRevision {
             .unwrap_or(2);
 
         if revision_seq < 2 {
-            return Err(NormordisPdfError::NdfRevisionError(
+            return Err(NormordisPdfError::ArchiveRevisionError(
                 "revision_seq must be >= 2 — original is implicitly seq 1".into(),
             ));
         }
 
         let meta_val = serde_json::to_value(&original.meta)
             .map_err(|e| NormordisPdfError::SerdeError(e.to_string()))?;
-        let integrity = NdfIntegrity::compute(&new_content, &original.styles, &meta_val)?;
+        let integrity = ArchiveIntegrity::compute(&new_content, &original.styles, &meta_val)?;
 
         let now = chrono::Utc::now().to_rfc3339();
         let doc_id = document_id
@@ -54,10 +54,10 @@ impl NdfRevision {
             extra: Default::default(),
         };
 
-        Ok(NdfDocument {
-            ndf: NDF_VERSION.into(),
+        Ok(RenderArchive {
+            archive: ARCHIVE_VERSION.into(),
             origin: original.origin.clone(),
-            revision: Some(NdfRevisionRef {
+            revision: Some(ArchiveRevisionRef {
                 revision_of: original.audit.document_id.clone(),
                 revision_reason: reason.to_string(),
                 revision_seq,
@@ -69,7 +69,7 @@ impl NdfRevision {
             page: original.page.clone(),
             embedded_fonts: original.embedded_fonts.clone(),
             integrity,
-            audit: NdfAudit {
+            audit: ArchiveAudit {
                 document_id: doc_id,
                 events: vec![first_event],
             },

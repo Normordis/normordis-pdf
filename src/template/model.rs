@@ -723,7 +723,7 @@ pub struct NdtSignatureField {
     pub label: Option<String>,
 }
 
-// ── Legacy body-rendering types (pub(crate) — NDF pipeline only) ─────────────
+// ── Legacy body-rendering types (pub(crate) — render archive pipeline only) ─────────────
 
 pub(crate) mod legacy_body {
     use serde::{Deserialize, Serialize};

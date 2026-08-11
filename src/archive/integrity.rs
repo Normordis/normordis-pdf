@@ -4,11 +4,11 @@ use sha2::{Digest, Sha256};
 
 use crate::NormordisPdfError;
 
-/// Integrity hashes over the NDF payload.
+/// Integrity hashes over the render archive payload.
 /// All hashes computed over canonical JSON (RFC 8785 / JCS).
 /// Immutable after creation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NdfIntegrity {
+pub struct ArchiveIntegrity {
     /// SHA-256 of the `content` field in canonical JSON.
     pub content_hash: String,
     /// SHA-256 of the `styles` field in canonical JSON.
@@ -21,8 +21,8 @@ pub struct NdfIntegrity {
     pub algorithm: String,
 }
 
-impl NdfIntegrity {
-    /// Computes all integrity hashes for a new NDF.
+impl ArchiveIntegrity {
+    /// Computes all integrity hashes for a new render archive.
     pub fn compute(content: &Value, styles: &Value, meta: &Value) -> crate::Result<Self> {
         let content_hash = canonical_hash(content);
         let styles_hash = canonical_hash(styles);
@@ -61,7 +61,7 @@ impl NdfIntegrity {
 /// Computes a SHA-256 hash over a JSON value using RFC 8785 / JCS canonical
 /// serialisation. Returns `"sha256:<hex>"`.
 pub fn canonical_hash(value: &Value) -> String {
-    let canonical = crate::ndf::jcs::canonicalise(value);
+    let canonical = crate::archive::jcs::canonicalise(value);
     let bytes = serde_json::to_vec(&canonical).expect("canonical JSON serialisation is infallible");
     format!("sha256:{}", hex::encode(Sha256::digest(&bytes)))
 }
@@ -86,49 +86,49 @@ pub struct IntegrityFailure {
     pub actual: String,
 }
 
-pub fn verify(ndf: &super::NdfDocument) -> crate::Result<IntegrityReport> {
+pub fn verify(archive: &super::RenderArchive) -> crate::Result<IntegrityReport> {
     let mut failures = Vec::new();
 
-    let actual_content = canonical_hash(&ndf.content);
-    let actual_styles = canonical_hash(&ndf.styles);
+    let actual_content = canonical_hash(&archive.content);
+    let actual_styles = canonical_hash(&archive.styles);
 
     let meta_val =
-        serde_json::to_value(&ndf.meta).map_err(|e| NormordisPdfError::SerdeError(e.to_string()))?;
+        serde_json::to_value(&archive.meta).map_err(|e| NormordisPdfError::SerdeError(e.to_string()))?;
 
-    let content_ok = actual_content == ndf.integrity.content_hash;
-    let styles_ok = actual_styles == ndf.integrity.styles_hash;
+    let content_ok = actual_content == archive.integrity.content_hash;
+    let styles_ok = actual_styles == archive.integrity.styles_hash;
 
     if !content_ok {
         failures.push(IntegrityFailure {
             field: "content_hash".into(),
-            expected: ndf.integrity.content_hash.clone(),
+            expected: archive.integrity.content_hash.clone(),
             actual: actual_content,
         });
     }
     if !styles_ok {
         failures.push(IntegrityFailure {
             field: "styles_hash".into(),
-            expected: ndf.integrity.styles_hash.clone(),
+            expected: archive.integrity.styles_hash.clone(),
             actual: actual_styles,
         });
     }
 
     let payload_val = serde_json::json!({
-        "content": ndf.content,
+        "content": archive.content,
         "meta":    meta_val,
-        "styles":  ndf.styles,
+        "styles":  archive.styles,
     });
     let actual_payload = canonical_hash(&payload_val);
-    let payload_ok = actual_payload == ndf.integrity.payload_hash;
+    let payload_ok = actual_payload == archive.integrity.payload_hash;
     if !payload_ok {
         failures.push(IntegrityFailure {
             field: "payload_hash".into(),
-            expected: ndf.integrity.payload_hash.clone(),
+            expected: archive.integrity.payload_hash.clone(),
             actual: actual_payload,
         });
     }
 
-    let audit_ok = verify_audit_chain(&ndf.audit);
+    let audit_ok = verify_audit_chain(&archive.audit);
     if !audit_ok {
         failures.push(IntegrityFailure {
             field: "audit_chain".into(),
@@ -149,7 +149,7 @@ pub fn verify(ndf: &super::NdfDocument) -> crate::Result<IntegrityReport> {
     })
 }
 
-fn verify_audit_chain(audit: &super::audit::NdfAudit) -> bool {
+fn verify_audit_chain(audit: &super::audit::ArchiveAudit) -> bool {
     let mut prev_ts: Option<&str> = None;
     let first_hash = audit.events.first().and_then(|e| e.content_hash.as_deref());
 

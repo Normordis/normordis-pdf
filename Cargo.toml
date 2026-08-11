@@ -10,7 +10,7 @@ resolver = "2"
 [workspace.package]
 edition = "2024"
 license = "EUPL-1.2"
-version = "3.0.0"
+version = "4.0.0"
 authors = ["Carlos Canuto Costa"]
 
 [workspace.dependencies]
@@ -26,7 +26,7 @@ base64 = "0.22"
 
 [package]
 name = "normordis-pdf"
-version = "3.0.0"
+version = "4.0.0"
 edition.workspace = true
 license = "EUPL-1.2"
 authors.workspace = true

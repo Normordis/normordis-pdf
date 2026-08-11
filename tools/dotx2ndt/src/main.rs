@@ -7,7 +7,7 @@ use dotx2ndt::numbering_mapper::parse_numbering_xml;
 use dotx2ndt::placeholder::build_ndt_output;
 use dotx2ndt::style_mapper::{parse_styles_xml, to_ndt_styles};
 
-/// dotx2ndt — Convert Word .docx / .dotx to a NORMAXIS NDT JSON document or template.
+/// dotx2ndt — Convert Word .docx / .dotx to a NORMORDIS NDT JSON document or template.
 ///
 /// Examples:
 ///

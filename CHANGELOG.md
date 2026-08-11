@@ -6,6 +6,53 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) — versions fo
 
 ---
 
+## [4.0.0] — Não publicado
+
+### Changed — BREAKING
+
+Renomeação do formato de arquivo interno do motor, que colidia com o **NDF
+(NORMORDIS Document Format)** especificado em `normordis-formats`. Eram dois
+formatos diferentes com o mesmo nome, sem um único campo em comum: o desta
+crate (`ndf: "1.1.0"`, com `origin`/`meta`/`content`/`integrity`/`audit`) e o
+NDF-core 1.0.0 da especificação (`ndf_id`/`metadados`/`documento`/`avaliacao`).
+
+Origem: achado `R14` de `docs/reports/READINESS-ASSESSMENT.md` no repositório
+`normordis-formats`.
+
+- `NdfDocument` → **`RenderArchive`**; módulo `ndf` → `archive`;
+  `template::ndf_pipeline` → `template::archive_pipeline`
+- `NdfOrigin`, `NdfMeta`, `NdfMetaNumbering`, `NdfIntegrity`, `NdfAudit`,
+  `NdfOutput`, `NdfSignature`, `NdfEmbeddedFont`, `NdfRevision`,
+  `NdfRevisionRef`, `NdfRecord`, `NdfRecordStatus`, `NdfRecordSummary`,
+  `NdfRegistry`, `NdfFilter` → prefixo `Archive*`
+- `parse_ndf`, `verify_ndf`, `render_ndf`, `render_ndf_with_fonts`,
+  `render_ndf_prepared_for_signing[_with_fonts]` → `*_archive`
+- `NDF_VERSION` → `ARCHIVE_VERSION` (valor inalterado: `"1.1.0"`)
+- variantes de erro `Ndf*Error` → `Archive*Error`
+- campo serializado `ndf` → `archive`, **com `alias = "ndf"`**: arquivos
+  escritos por versões anteriores continuam a ser lidos
+- evento de auditoria `signature.ndf.applied` → `signature.archive.applied`,
+  também com alias de leitura
+
+`CampoNdf` / `campo_ndf` **mantêm-se**: são construção do NDT 2.0.0 e
+referem-se legitimamente ao NDF da especificação.
+
+### Fixed
+
+- rótulos de proprietário corrigidos: NCRTF, NDT e NDF são formatos
+  **NORMORDIS**, não NORMAXIS (`src/lib.rs`, `tools/ndt-tools`,
+  `tools/dotx2ndt`). As menções ao *framework* NORMAXIS mantêm-se
+- versão NDT na documentação do crate corrigida de `v1.3.0` para `v2.0.0`,
+  alinhando com `ENGINE_NDT_VERSION`
+
+### Nota
+
+O renderizador de layout posicionado do NDT 2.0.0 continua por implementar
+(`template::renderer::render_template` devolve erro). Ver achados `R8` e `R15`
+em `normordis-formats`.
+
+---
+
 ## [2.5.0] — 2026-05-14
 
 ### Added

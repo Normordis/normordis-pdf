@@ -5,8 +5,8 @@
 //! Generates professional PDF documents for Portuguese public administration,
 //! with support for:
 //! - Flow and Fixed Box layout modes
-//! - NORMAXIS Canonical Rich Text Format (NCRTF v1.1)
-//! - NORMAXIS Document Template format (NDT v1.3.0)
+//! - NORMORDIS Canonical Rich Text Format (NCRTF)
+//! - NORMORDIS Document Template format (NDT v2.0.0)
 //! - Named paragraph/table styles with inheritance (equivalent to Word Styles)
 //! - Tab stops (left, right, center, decimal) with leader characters
 //! - TTF/OTF font loading with real glyph metrics (rustybuzz + ttf-parser)
@@ -66,7 +66,7 @@ pub mod error;
 pub mod ffi;
 pub mod fonts;
 pub mod layout;
-pub mod ndf;
+pub mod archive;
 pub mod page;
 pub mod richtext;
 pub mod signing;
@@ -180,24 +180,24 @@ pub use template::model::{NdtOutput, NdtSignature, NdtSignatureField};
 
 pub use template::TemplateFilter;
 
-// ── NDF pipeline ─────────────────────────────────────────────────────────────
+// ── Render archive pipeline ─────────────────────────────────────────────────────────────
 
 pub use template::{
-    CompileOptions, compile_ndt, parse_ndf, render_ndf, render_ndf_prepared_for_signing,
-    render_ndf_prepared_for_signing_with_fonts, render_ndf_with_fonts, verify_ndf,
+    CompileOptions, compile_ndt, parse_archive, render_archive, render_archive_prepared_for_signing,
+    render_archive_prepared_for_signing_with_fonts, render_archive_with_fonts, verify_archive,
 };
 
-// ── NDF types ─────────────────────────────────────────────────────────────────
+// ── Render archive types ─────────────────────────────────────────────────────────────────
 
-pub use ndf::{
-    Actor, AuditEvent, EventType, IntegrityFailure, IntegrityReport, NdfAudit, NdfDocument,
-    NdfEmbeddedFont, NdfIntegrity, NdfMeta, NdfMetaNumbering, NdfOrigin, NdfOutput, NdfRevision,
-    NdfRevisionRef, NdfSignature, canonical_hash,
+pub use archive::{
+    Actor, AuditEvent, EventType, IntegrityFailure, IntegrityReport, ArchiveAudit, RenderArchive,
+    ArchiveEmbeddedFont, ArchiveIntegrity, ArchiveMeta, ArchiveMetaNumbering, ArchiveOrigin, ArchiveOutput, ArchiveRevision,
+    ArchiveRevisionRef, ArchiveSignature, canonical_hash,
 };
 
-// ── NDF document registry ────────────────────────────────────────────────────
+// ── Render archive registry ────────────────────────────────────────────────────
 
-pub use ndf::{NdfFilter, NdfRecord, NdfRecordStatus, NdfRecordSummary, NdfRegistry};
+pub use archive::{ArchiveFilter, ArchiveRecord, ArchiveRecordStatus, ArchiveRecordSummary, ArchiveRegistry};
 
 // ── NCRTF 2.0.0 types ────────────────────────────────────────────────────────
 
@@ -221,8 +221,8 @@ pub const NDT_VERSION: &str = "2.0.0";
 /// PDF backend crate powering the output engine.
 pub const PDF_BACKEND: &str = "pdf-writer";
 
-/// NDF format version produced by this release.
-pub const NDF_VERSION: &str = ndf::NDF_VERSION;
+/// Render archive format version produced by this release.
+pub const ARCHIVE_VERSION: &str = archive::ARCHIVE_VERSION;
 
 /// NCRTF format version supported by this release.
 pub const NCRTF_VERSION: &str = richtext::NCRTF_VERSION;
