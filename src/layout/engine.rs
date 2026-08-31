@@ -252,39 +252,37 @@ impl TextLayoutEngine {
         // Measure the combined width of all Word tokens up to (not including) the
         // next Tab or Break. Used for Right/Center tab look-ahead.
         // Takes the remaining queue (current Tab already popped) and iterates from index 0.
-        let lookahead_width =
-            |queue: &std::collections::VecDeque<Token>| -> f64 {
-                let mut w = 0.0;
-                let mut first = true;
-                for tok in queue.iter() {
-                    match tok {
-                        Token::Tab(_) | Token::Break => break,
-                        Token::Word(text, style, ls) => {
-                            if !first {
-                                w += space_w;
-                            }
-                            first = false;
-                            let base = fonts.measure_text_mm(
-                                text,
-                                &self.default_family,
-                                font_size,
-                                style.bold,
-                                style.italic,
-                            );
-                            let chars = text.chars().count();
-                            w += if chars > 1 && *ls > 0.0 {
-                                base + ls * (chars - 1) as f64
-                            } else {
-                                base
-                            };
+        let lookahead_width = |queue: &std::collections::VecDeque<Token>| -> f64 {
+            let mut w = 0.0;
+            let mut first = true;
+            for tok in queue.iter() {
+                match tok {
+                    Token::Tab(_) | Token::Break => break,
+                    Token::Word(text, style, ls) => {
+                        if !first {
+                            w += space_w;
                         }
+                        first = false;
+                        let base = fonts.measure_text_mm(
+                            text,
+                            &self.default_family,
+                            font_size,
+                            style.bold,
+                            style.italic,
+                        );
+                        let chars = text.chars().count();
+                        w += if chars > 1 && *ls > 0.0 {
+                            base + ls * (chars - 1) as f64
+                        } else {
+                            base
+                        };
                     }
                 }
-                w
-            };
+            }
+            w
+        };
 
-        let mut token_queue: std::collections::VecDeque<Token> =
-            tokens.into_iter().collect();
+        let mut token_queue: std::collections::VecDeque<Token> = tokens.into_iter().collect();
 
         while let Some(token) = token_queue.pop_front() {
             match token {
@@ -470,8 +468,7 @@ impl TextLayoutEngine {
                                     return None;
                                 }
                                 let head = format!("{}-", &word[..bp]);
-                                let hw =
-                                    word_width(fonts, &head, style.bold, style.italic, ls);
+                                let hw = word_width(fonts, &head, style.bold, style.italic, ls);
                                 if hw <= available {
                                     Some((head, word[bp..].to_string()))
                                 } else {

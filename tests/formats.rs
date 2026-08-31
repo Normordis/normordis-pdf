@@ -1,7 +1,7 @@
 use normordis_pdf::archive::jcs;
 use normordis_pdf::{
-    Actor, AuditEvent, CompileOptions, EventType, NcrtfMark, ArchiveRevision,
-    canonical_hash, compile_ndt, parse_ncrtf, parse_archive, render_archive, verify_archive,
+    Actor, ArchiveRevision, AuditEvent, CompileOptions, EventType, NcrtfMark, canonical_hash,
+    compile_ndt, parse_archive, parse_ncrtf, render_archive, verify_archive,
 };
 use serde_json::json;
 
@@ -131,7 +131,11 @@ fn fmt_10_ndf_hash_not_empty_and_different_from_payload_hash() {
 #[test]
 fn fmt_11_compile_ndt_json_ok() {
     let archive = compile_ndt(minimal_ndt(), &minimal_data(), CompileOptions::default());
-    assert!(archive.is_ok(), "compile_ndt must return Ok: {:?}", archive.err());
+    assert!(
+        archive.is_ok(),
+        "compile_ndt must return Ok: {:?}",
+        archive.err()
+    );
 }
 
 #[test]
@@ -173,7 +177,6 @@ fn fmt_13_compile_ndt_resolves_placeholders() {
     );
 }
 
-
 #[test]
 fn fmt_15_compile_ndt_validate_resolved_false_allows_remaining() {
     let ndt = r#"{
@@ -206,7 +209,10 @@ fn fmt_16_compile_ndt_ndf_version() {
 fn fmt_17_compile_ndt_audit_has_one_generated_event() {
     let archive = simple_ndf();
     assert_eq!(archive.audit.events.len(), 1);
-    assert_eq!(archive.audit.events[0].event_type, EventType::DocumentGenerated);
+    assert_eq!(
+        archive.audit.events[0].event_type,
+        EventType::DocumentGenerated
+    );
     assert_eq!(archive.audit.events[0].seq, 1);
 }
 
@@ -224,7 +230,11 @@ fn fmt_19_render_archive_returns_bytes() {
     let archive = simple_ndf();
     let json = archive.to_canonical_json().unwrap();
     let pdf = render_archive(&json);
-    assert!(pdf.is_ok(), "render_archive must return Ok: {:?}", pdf.err());
+    assert!(
+        pdf.is_ok(),
+        "render_archive must return Ok: {:?}",
+        pdf.err()
+    );
     assert!(!pdf.unwrap().is_empty());
 }
 
@@ -246,7 +256,10 @@ fn fmt_21_parse_archive_from_canonical_json_roundtrip() {
     let restored = parse_archive(&canonical).unwrap();
     assert_eq!(restored.archive, archive.archive);
     assert_eq!(restored.meta.title, archive.meta.title);
-    assert_eq!(restored.integrity.content_hash, archive.integrity.content_hash);
+    assert_eq!(
+        restored.integrity.content_hash,
+        archive.integrity.content_hash
+    );
 }
 
 #[test]
@@ -334,7 +347,10 @@ fn fmt_27_add_event_wrong_hash_errors() {
         note: None,
         extra: Default::default(),
     };
-    assert!(archive.add_event(event).is_err(), "wrong hash must return Err");
+    assert!(
+        archive.add_event(event).is_err(),
+        "wrong hash must return Err"
+    );
 }
 
 #[test]
@@ -485,7 +501,11 @@ fn fmt_34_parse_ncrtf_200_ok() {
         ]
     }"#;
     let doc = parse_ncrtf(json);
-    assert!(doc.is_ok(), "parse_ncrtf 2.0.0 must return Ok: {:?}", doc.err());
+    assert!(
+        doc.is_ok(),
+        "parse_ncrtf 2.0.0 must return Ok: {:?}",
+        doc.err()
+    );
     assert_eq!(doc.unwrap().ncrtf_version, "2.0.0");
 }
 
@@ -516,7 +536,10 @@ fn fmt_36_soft_hyphen_preserved_in_text_node() {
     use normordis_pdf::richtext::model::{Block, Inline};
     if let Block::Paragraph(p) = &doc.content[0] {
         if let Inline::Text(t) = &p.content[0] {
-            assert!(t.text.contains('\u{00AD}'), "soft hyphen U+00AD must be preserved");
+            assert!(
+                t.text.contains('\u{00AD}'),
+                "soft hyphen U+00AD must be preserved"
+            );
         }
     }
 }
@@ -537,7 +560,10 @@ fn fmt_37_image_block_requires_alt() {
 #[test]
 fn fmt_38_image_block_without_alt_fails() {
     let json = r#"{"ncrtf_version":"2.0.0","content":[{"type":"image","ref":"assets/logo.png"}]}"#;
-    assert!(parse_ncrtf(json).is_err(), "image without alt must fail to parse");
+    assert!(
+        parse_ncrtf(json).is_err(),
+        "image without alt must fail to parse"
+    );
 }
 
 #[test]
@@ -576,13 +602,16 @@ fn fmt_42_ncrtf_and_ndt_are_distinct_models() {
     let doc = parse_ncrtf(r#"{"ncrtf_version":"2.0.0","content":[]}"#).unwrap();
     assert_eq!(doc.ncrtf_version, "2.0.0");
 
-    let ndt_doc = normordis_pdf::parse_ndt(r#"{
+    let ndt_doc = normordis_pdf::parse_ndt(
+        r#"{
         "ndt_version": "2.0.0",
         "schema_id": "urn:normordis:ndt:test",
         "versao_ndt": "1.0.0",
         "titulo": "Template title",
         "paginas_def": [{"id": "p1"}],
         "sequencia": [{"pagina_def": "p1", "repeticao": "unica"}]
-    }"#).unwrap();
+    }"#,
+    )
+    .unwrap();
     assert_eq!(ndt_doc.titulo.as_deref(), Some("Template title"));
 }

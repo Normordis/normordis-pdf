@@ -472,7 +472,10 @@ impl Element for Paragraph {
 
         // Orphan control: if fresh and a split would leave too few lines at the
         // bottom, push the entire paragraph to the next page instead.
-        if is_fresh && !ctx.flow.is_top_of_page() && let Some(nb) = natural_break {
+        if is_fresh
+            && !ctx.flow.is_top_of_page()
+            && let Some(nb) = natural_break
+        {
             let lines_on_page = nb - start_line;
             let min_orphan = ctx.style.min_orphan_lines as usize;
             if min_orphan > 0 && lines_on_page > 0 && lines_on_page < min_orphan {
@@ -624,9 +627,24 @@ impl Element for Paragraph {
                 // Text.
                 if seg.letter_spacing_mm > 0.0 {
                     let ls_pt = (seg.letter_spacing_mm * 72.0 / 25.4) as f32;
-                    ctx.draw_text_spaced(&display_text, x, y_seg, seg_font_size, font_ref, &text_color, ls_pt)?;
+                    ctx.draw_text_spaced(
+                        &display_text,
+                        x,
+                        y_seg,
+                        seg_font_size,
+                        font_ref,
+                        &text_color,
+                        ls_pt,
+                    )?;
                 } else {
-                    ctx.draw_text(&display_text, x, y_seg, seg_font_size, font_ref, &text_color)?;
+                    ctx.draw_text(
+                        &display_text,
+                        x,
+                        y_seg,
+                        seg_font_size,
+                        font_ref,
+                        &text_color,
+                    )?;
                 }
 
                 // Decoration post-pass: underline / strikethrough (Artifact).
@@ -654,53 +672,53 @@ impl Element for Paragraph {
         // ── Paragraph borders (only on fresh start — can't span pages) ────────
         if is_fresh && let Some(ref brd) = self.border {
             let pad = brd.padding_mm;
-                let x0 = block_x - pad;
-                let x1 = block_x + block_w + pad;
-                let y_top = block_y_top + pad;
-                let y_bot = block_y_top - block_h - pad;
-                let has_border = brd.top.is_some()
-                    || brd.bottom.is_some()
-                    || brd.left.is_some()
-                    || brd.right.is_some();
-                if ctx.ua_config.enabled && has_border {
-                    ctx.backend.begin_artifact_content();
-                }
-                if let Some(ref dl) = brd.top {
-                    let col = dl.color.as_ref().cloned().unwrap_or(RgbColor {
-                        r: 0.0,
-                        g: 0.0,
-                        b: 0.0,
-                    });
-                    let pt = (dl.thickness_mm * 72.0 / 25.4) as f32;
-                    ctx.draw_hline(x0, x1, y_top, pt, &col)?;
-                }
-                if let Some(ref dl) = brd.bottom {
-                    let col = dl.color.as_ref().cloned().unwrap_or(RgbColor {
-                        r: 0.0,
-                        g: 0.0,
-                        b: 0.0,
-                    });
-                    let pt = (dl.thickness_mm * 72.0 / 25.4) as f32;
-                    ctx.draw_hline(x0, x1, y_bot, pt, &col)?;
-                }
-                if let Some(ref dl) = brd.left {
-                    let col = dl.color.as_ref().cloned().unwrap_or(RgbColor {
-                        r: 0.0,
-                        g: 0.0,
-                        b: 0.0,
-                    });
-                    let pt = (dl.thickness_mm * 72.0 / 25.4) as f32;
-                    ctx.draw_vline(x0, y_bot, y_top, pt, &col)?;
-                }
-                if let Some(ref dl) = brd.right {
-                    let col = dl.color.as_ref().cloned().unwrap_or(RgbColor {
-                        r: 0.0,
-                        g: 0.0,
-                        b: 0.0,
-                    });
-                    let pt = (dl.thickness_mm * 72.0 / 25.4) as f32;
-                    ctx.draw_vline(x1, y_bot, y_top, pt, &col)?;
-                }
+            let x0 = block_x - pad;
+            let x1 = block_x + block_w + pad;
+            let y_top = block_y_top + pad;
+            let y_bot = block_y_top - block_h - pad;
+            let has_border = brd.top.is_some()
+                || brd.bottom.is_some()
+                || brd.left.is_some()
+                || brd.right.is_some();
+            if ctx.ua_config.enabled && has_border {
+                ctx.backend.begin_artifact_content();
+            }
+            if let Some(ref dl) = brd.top {
+                let col = dl.color.as_ref().cloned().unwrap_or(RgbColor {
+                    r: 0.0,
+                    g: 0.0,
+                    b: 0.0,
+                });
+                let pt = (dl.thickness_mm * 72.0 / 25.4) as f32;
+                ctx.draw_hline(x0, x1, y_top, pt, &col)?;
+            }
+            if let Some(ref dl) = brd.bottom {
+                let col = dl.color.as_ref().cloned().unwrap_or(RgbColor {
+                    r: 0.0,
+                    g: 0.0,
+                    b: 0.0,
+                });
+                let pt = (dl.thickness_mm * 72.0 / 25.4) as f32;
+                ctx.draw_hline(x0, x1, y_bot, pt, &col)?;
+            }
+            if let Some(ref dl) = brd.left {
+                let col = dl.color.as_ref().cloned().unwrap_or(RgbColor {
+                    r: 0.0,
+                    g: 0.0,
+                    b: 0.0,
+                });
+                let pt = (dl.thickness_mm * 72.0 / 25.4) as f32;
+                ctx.draw_vline(x0, y_bot, y_top, pt, &col)?;
+            }
+            if let Some(ref dl) = brd.right {
+                let col = dl.color.as_ref().cloned().unwrap_or(RgbColor {
+                    r: 0.0,
+                    g: 0.0,
+                    b: 0.0,
+                });
+                let pt = (dl.thickness_mm * 72.0 / 25.4) as f32;
+                ctx.draw_vline(x1, y_bot, y_top, pt, &col)?;
+            }
             if ctx.ua_config.enabled && has_border {
                 ctx.backend.end_tagged_content();
             }

@@ -18,8 +18,16 @@ use crate::{
     styles::{DocumentStyle, RgbColor},
 };
 
-const LINK_COLOR: RgbColor = RgbColor { r: 0.0, g: 0.2, b: 0.6 };
-const BLOCKQUOTE_COLOR: RgbColor = RgbColor { r: 0.47, g: 0.47, b: 0.47 };
+const LINK_COLOR: RgbColor = RgbColor {
+    r: 0.0,
+    g: 0.2,
+    b: 0.6,
+};
+const BLOCKQUOTE_COLOR: RgbColor = RgbColor {
+    r: 0.47,
+    g: 0.47,
+    b: 0.47,
+};
 
 /// Convert a parsed `NcrtfDocument` into a flat list of `normordis-pdf` elements.
 pub fn ncrtf_to_elements(doc: &NcrtfDocument, _style: &DocumentStyle) -> Vec<Box<dyn Element>> {
@@ -31,25 +39,37 @@ pub fn ncrtf_to_elements(doc: &NcrtfDocument, _style: &DocumentStyle) -> Vec<Box
             Block::Paragraph(p) => elements.push(paragraph_block_to_element(p)),
             Block::List(l) => match l.list_type {
                 ListType::Bullet => {
-                    let items = l.content.iter().map(|li| ListItemElement {
-                        indent: 0,
-                        runs: list_item_runs(&li.content),
-                    }).collect();
+                    let items = l
+                        .content
+                        .iter()
+                        .map(|li| ListItemElement {
+                            indent: 0,
+                            runs: list_item_runs(&li.content),
+                        })
+                        .collect();
                     elements.push(Box::new(BulletList { items }));
                 }
                 ListType::Ordered => {
-                    let items = l.content.iter().map(|li| ListItemElement {
-                        indent: 0,
-                        runs: list_item_runs(&li.content),
-                    }).collect();
+                    let items = l
+                        .content
+                        .iter()
+                        .map(|li| ListItemElement {
+                            indent: 0,
+                            runs: list_item_runs(&li.content),
+                        })
+                        .collect();
                     elements.push(Box::new(OrderedList { start: 1, items }));
                 }
                 ListType::Checklist => {
-                    let items = l.content.iter().map(|li| CheckListItem {
-                        checked: li.checked.unwrap_or(false),
-                        indent: 0,
-                        runs: list_item_runs(&li.content),
-                    }).collect();
+                    let items = l
+                        .content
+                        .iter()
+                        .map(|li| CheckListItem {
+                            checked: li.checked.unwrap_or(false),
+                            indent: 0,
+                            runs: list_item_runs(&li.content),
+                        })
+                        .collect();
                     elements.push(Box::new(CheckList { items }));
                 }
             },
@@ -101,16 +121,22 @@ fn table_block_to_elements(t: &TableBlock, out: &mut Vec<Box<dyn Element>>) {
     let mut builder = Table::builder().table_style(TableStyle::grid());
 
     for hrow in &t.head {
-        let cells: Vec<TableCell> = hrow.cells.iter().map(|s| {
-            let mut c = TableCell::new(s.clone());
-            c.style_ref = Some("table_header".into());
-            c
-        }).collect();
+        let cells: Vec<TableCell> = hrow
+            .cells
+            .iter()
+            .map(|s| {
+                let mut c = TableCell::new(s.clone());
+                c.style_ref = Some("table_header".into());
+                c
+            })
+            .collect();
         builder = builder.header_row(cells);
     }
 
     for brow in &t.body {
-        let cells: Vec<TableCell> = brow.cells.iter()
+        let cells: Vec<TableCell> = brow
+            .cells
+            .iter()
             .map(|s| TableCell::new(s.clone()))
             .collect();
         builder = builder.row(cells);
@@ -123,11 +149,14 @@ fn table_block_to_elements(t: &TableBlock, out: &mut Vec<Box<dyn Element>>) {
 
 /// Extract plain text from a slice of inline nodes.
 pub fn inlines_to_text(inlines: &[Inline]) -> String {
-    inlines.iter().map(|i| match i {
-        Inline::Text(t) => t.text.clone(),
-        Inline::Link(l) => l.content.iter().map(|t| t.text.clone()).collect(),
-        Inline::HardBreak => "\n".to_string(),
-    }).collect()
+    inlines
+        .iter()
+        .map(|i| match i {
+            Inline::Text(t) => t.text.clone(),
+            Inline::Link(l) => l.content.iter().map(|t| t.text.clone()).collect(),
+            Inline::HardBreak => "\n".to_string(),
+        })
+        .collect()
 }
 
 /// Convert a slice of inline nodes into `TextRun`s.
@@ -168,7 +197,10 @@ fn inlines_to_runs_colored(inlines: &[Inline], base_color: &RgbColor) -> Vec<Tex
                     runs.push(run);
                 }
             }
-            Inline::HardBreak => runs.push(TextRun { text: "\n".into(), ..Default::default() }),
+            Inline::HardBreak => runs.push(TextRun {
+                text: "\n".into(),
+                ..Default::default()
+            }),
         }
     }
     runs
@@ -183,7 +215,11 @@ fn text_node_to_run(t: &TextNode, base_color: Option<&str>) -> TextRun {
     if style.font_family.is_none() {
         style.font_family = t.font_family.clone();
     }
-    TextRun { text: t.text.clone(), style, ..Default::default() }
+    TextRun {
+        text: t.text.clone(),
+        style,
+        ..Default::default()
+    }
 }
 
 /// Extract `TextRun`s from list item content, skipping nested lists.
@@ -200,7 +236,10 @@ fn list_item_runs(content: &[ListItemContent]) -> Vec<TextRun> {
                 }
             }
             ListItemContent::HardBreak => {
-                runs.push(TextRun { text: "\n".into(), ..Default::default() });
+                runs.push(TextRun {
+                    text: "\n".into(),
+                    ..Default::default()
+                });
             }
             ListItemContent::List(_) => {} // nested lists not yet rendered in body-flow path
         }

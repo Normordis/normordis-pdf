@@ -5,8 +5,8 @@ use serde_json::Value;
 use super::data::NdtData;
 use super::resolver;
 use crate::archive::{
-    ARCHIVE_VERSION, RenderArchive, ArchiveEmbeddedFont, ArchiveMeta, ArchiveOrigin,
-    audit::{Actor, AuditEvent, EventType, ArchiveAudit},
+    ARCHIVE_VERSION, ArchiveEmbeddedFont, ArchiveMeta, ArchiveOrigin, RenderArchive,
+    audit::{Actor, ArchiveAudit, AuditEvent, EventType},
     integrity::{ArchiveIntegrity, canonical_hash},
 };
 use crate::{NormordisPdfError, Result};
@@ -289,7 +289,10 @@ fn render_archive_prepared_for_signing_inner(
 fn rebuild_body_elements_and_fonts(
     archive: &RenderArchive,
     extra_fonts: Option<&crate::fonts::FontRegistry>,
-) -> Result<(Vec<super::model::legacy_body::BodyElement>, crate::fonts::FontRegistry)> {
+) -> Result<(
+    Vec<super::model::legacy_body::BodyElement>,
+    crate::fonts::FontRegistry,
+)> {
     // Graceful fallback: archives compiled from NDT 2.0.0 paginas_def content won't
     // deserialize as BodyElement; return empty body so rendering still succeeds.
     let body: Vec<super::model::legacy_body::BodyElement> =

@@ -709,7 +709,7 @@ impl FontRegistry {
     #[cfg(feature = "system-fonts")]
     pub fn from_system() -> crate::Result<FontRegistry> {
         let mut registry = FontRegistry::default(); // Liberation fonts + Word aliases
-        registry.load_system_fonts()?;             // merge system fonts on top
+        registry.load_system_fonts()?; // merge system fonts on top
         Ok(registry)
     }
 }

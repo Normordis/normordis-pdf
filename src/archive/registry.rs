@@ -101,7 +101,8 @@ impl ArchiveRecord {
 
     /// Recover the [`RenderArchive`] from this record's payload.
     pub fn to_archive(&self) -> crate::Result<RenderArchive> {
-        serde_json::from_str(&self.payload).map_err(|e| NormordisPdfError::SerdeError(e.to_string()))
+        serde_json::from_str(&self.payload)
+            .map_err(|e| NormordisPdfError::SerdeError(e.to_string()))
     }
 
     /// SHA-256 of the raw payload bytes (independent of archive integrity hashes).

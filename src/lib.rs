@@ -56,6 +56,7 @@
 
 // ── Modules ───────────────────────────────────────────────────────────────────
 
+pub mod archive;
 pub mod backend;
 pub mod builder;
 pub mod compliance;
@@ -66,7 +67,6 @@ pub mod error;
 pub mod ffi;
 pub mod fonts;
 pub mod layout;
-pub mod archive;
 pub mod page;
 pub mod richtext;
 pub mod signing;
@@ -76,9 +76,9 @@ pub mod tsa;
 
 // ── Error handling ────────────────────────────────────────────────────────────
 
-pub use error::{NormordisPdfError, Result};
 #[allow(deprecated)]
 pub use error::NormaxisPdfError;
+pub use error::{NormordisPdfError, Result};
 
 // ── Digital signing ───────────────────────────────────────────────────────────
 
@@ -183,21 +183,24 @@ pub use template::TemplateFilter;
 // ── Render archive pipeline ─────────────────────────────────────────────────────────────
 
 pub use template::{
-    CompileOptions, compile_ndt, parse_archive, render_archive, render_archive_prepared_for_signing,
-    render_archive_prepared_for_signing_with_fonts, render_archive_with_fonts, verify_archive,
+    CompileOptions, compile_ndt, parse_archive, render_archive,
+    render_archive_prepared_for_signing, render_archive_prepared_for_signing_with_fonts,
+    render_archive_with_fonts, verify_archive,
 };
 
 // ── Render archive types ─────────────────────────────────────────────────────────────────
 
 pub use archive::{
-    Actor, AuditEvent, EventType, IntegrityFailure, IntegrityReport, ArchiveAudit, RenderArchive,
-    ArchiveEmbeddedFont, ArchiveIntegrity, ArchiveMeta, ArchiveMetaNumbering, ArchiveOrigin, ArchiveOutput, ArchiveRevision,
-    ArchiveRevisionRef, ArchiveSignature, canonical_hash,
+    Actor, ArchiveAudit, ArchiveEmbeddedFont, ArchiveIntegrity, ArchiveMeta, ArchiveMetaNumbering,
+    ArchiveOrigin, ArchiveOutput, ArchiveRevision, ArchiveRevisionRef, ArchiveSignature,
+    AuditEvent, EventType, IntegrityFailure, IntegrityReport, RenderArchive, canonical_hash,
 };
 
 // ── Render archive registry ────────────────────────────────────────────────────
 
-pub use archive::{ArchiveFilter, ArchiveRecord, ArchiveRecordStatus, ArchiveRecordSummary, ArchiveRegistry};
+pub use archive::{
+    ArchiveFilter, ArchiveRecord, ArchiveRecordStatus, ArchiveRecordSummary, ArchiveRegistry,
+};
 
 // ── NCRTF 2.0.0 types ────────────────────────────────────────────────────────
 

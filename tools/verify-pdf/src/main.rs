@@ -56,7 +56,10 @@ fn main() {
         Ok(out) => {
             let version = String::from_utf8_lossy(&out.stdout);
             if !json_output {
-                print!("veraPDF {}", version.lines().next().unwrap_or("(unknown version)"));
+                print!(
+                    "veraPDF {}",
+                    version.lines().next().unwrap_or("(unknown version)")
+                );
             }
         }
     }
@@ -184,13 +187,22 @@ fn parse_mrr(xml: &str) -> ProfileResult {
             if !chunk.contains("status=\"failed\"") {
                 continue;
             }
-            let specification = attr_str(chunk, "specification").unwrap_or_default().to_string();
+            let specification = attr_str(chunk, "specification")
+                .unwrap_or_default()
+                .to_string();
             let clause = attr_str(chunk, "clause").unwrap_or_default().to_string();
-            let test_number = attr_str(chunk, "testNumber").unwrap_or_default().to_string();
+            let test_number = attr_str(chunk, "testNumber")
+                .unwrap_or_default()
+                .to_string();
             // Description may appear in a child <description> element.
-            let description = between(chunk, "<description>", "</description>")
-                .map(|s| s.trim().to_string());
-            failures.push(RuleFailure { specification, clause, test_number, description });
+            let description =
+                between(chunk, "<description>", "</description>").map(|s| s.trim().to_string());
+            failures.push(RuleFailure {
+                specification,
+                clause,
+                test_number,
+                description,
+            });
         }
     }
 
@@ -225,7 +237,10 @@ fn print_human(results: &[ProfileResult]) {
                 r.profile, r.failed_rules, r.failed_checks
             );
             for f in &r.failures {
-                print!("      [{}] §{} teste {}", f.specification, f.clause, f.test_number);
+                print!(
+                    "      [{}] §{} teste {}",
+                    f.specification, f.clause, f.test_number
+                );
                 if let Some(ref d) = f.description {
                     print!(" — {}", d);
                 }
@@ -261,18 +276,14 @@ fn print_json(results: &[ProfileResult], any_failed: bool) {
             );
             for (j, f) in r.failures.iter().enumerate() {
                 let fc = if j + 1 < r.failures.len() { "," } else { "" };
-                let desc = f
-                    .description
-                    .as_deref()
-                    .unwrap_or("")
-                    .replace('"', "\\\"");
+                let desc = f.description.as_deref().unwrap_or("").replace('"', "\\\"");
                 println!(
                     "      {{\"specification\":\"{}\",\"clause\":\"{}\",\
                      \"testNumber\":\"{}\",\"description\":\"{}\"}}{}",
                     f.specification, f.clause, f.test_number, desc, fc
                 );
             }
-            println!("    ]}}{}",  comma);
+            println!("    ]}}{}", comma);
         }
     }
     println!("  ]");
@@ -308,9 +319,7 @@ fn has_flag(args: &[String], flag: &str) -> bool {
 }
 
 fn flag_value(args: &[String], flag: &str) -> Option<String> {
-    args.windows(2)
-        .find(|w| w[0] == flag)
-        .map(|w| w[1].clone())
+    args.windows(2).find(|w| w[0] == flag).map(|w| w[1].clone())
 }
 
 fn attr_u32(xml: &str, attr: &str) -> u32 {

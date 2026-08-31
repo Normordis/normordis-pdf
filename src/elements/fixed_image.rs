@@ -68,47 +68,47 @@ impl Element for FixedImageBox {
         if !self.data.is_empty()
             && let Ok(img) = image::load_from_memory(&self.data)
         {
-                let (px_w, px_h) = (img.width() as f64, img.height() as f64);
-                let aspect = if px_w > 0.0 { px_h / px_w } else { 1.0 };
-                let box_w = self.image_box.width_mm;
-                let box_h = self.image_box.height_mm;
+            let (px_w, px_h) = (img.width() as f64, img.height() as f64);
+            let aspect = if px_w > 0.0 { px_h / px_w } else { 1.0 };
+            let box_w = self.image_box.width_mm;
+            let box_h = self.image_box.height_mm;
 
-                let (render_w, render_h, x_off, y_off) = match self.fit {
-                    ImageFit::Contain => {
-                        let h_by_w = box_w * aspect;
-                        if h_by_w <= box_h {
-                            (box_w, h_by_w, 0.0, (box_h - h_by_w) / 2.0)
-                        } else {
-                            let rw = box_h / aspect;
-                            (rw, box_h, (box_w - rw) / 2.0, 0.0)
-                        }
+            let (render_w, render_h, x_off, y_off) = match self.fit {
+                ImageFit::Contain => {
+                    let h_by_w = box_w * aspect;
+                    if h_by_w <= box_h {
+                        (box_w, h_by_w, 0.0, (box_h - h_by_w) / 2.0)
+                    } else {
+                        let rw = box_h / aspect;
+                        (rw, box_h, (box_w - rw) / 2.0, 0.0)
                     }
-                    ImageFit::Cover => {
-                        let h_by_w = box_w * aspect;
-                        if h_by_w >= box_h {
-                            (box_w, h_by_w, 0.0, 0.0)
-                        } else {
-                            (box_h / aspect, box_h, 0.0, 0.0)
-                        }
-                    }
-                    ImageFit::Stretch => (box_w, box_h, 0.0, 0.0),
-                    ImageFit::Original => {
-                        let w = (px_w * 25.4 / 96.0).min(box_w);
-                        let h = (px_h * 25.4 / 96.0).min(box_h);
-                        (w, h, 0.0, 0.0)
-                    }
-                };
-
-                if render_w > 0.0 && render_h > 0.0 {
-                    let img_ref = ctx.backend.embed_image(&self.data)?;
-                    ctx.backend.draw_image(
-                        img_ref,
-                        self.image_box.x_mm + x_off,
-                        self.image_box.y_mm + y_off,
-                        render_w,
-                        render_h,
-                    );
                 }
+                ImageFit::Cover => {
+                    let h_by_w = box_w * aspect;
+                    if h_by_w >= box_h {
+                        (box_w, h_by_w, 0.0, 0.0)
+                    } else {
+                        (box_h / aspect, box_h, 0.0, 0.0)
+                    }
+                }
+                ImageFit::Stretch => (box_w, box_h, 0.0, 0.0),
+                ImageFit::Original => {
+                    let w = (px_w * 25.4 / 96.0).min(box_w);
+                    let h = (px_h * 25.4 / 96.0).min(box_h);
+                    (w, h, 0.0, 0.0)
+                }
+            };
+
+            if render_w > 0.0 && render_h > 0.0 {
+                let img_ref = ctx.backend.embed_image(&self.data)?;
+                ctx.backend.draw_image(
+                    img_ref,
+                    self.image_box.x_mm + x_off,
+                    self.image_box.y_mm + y_off,
+                    render_w,
+                    render_h,
+                );
+            }
         }
 
         if ua {

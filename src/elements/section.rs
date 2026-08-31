@@ -113,7 +113,9 @@ impl Element for Section {
             _ => StructTag::H6,
         };
         if ctx.ua_enabled() {
-            if let Some(prev) = ctx.last_heading_level && self.level > prev + 1 {
+            if let Some(prev) = ctx.last_heading_level
+                && self.level > prev + 1
+            {
                 eprintln!(
                     "PDF/UA-2 WARNING: heading level skipped from H{} to H{}",
                     prev, self.level

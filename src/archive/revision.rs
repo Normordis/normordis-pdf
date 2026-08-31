@@ -1,8 +1,8 @@
 use serde_json::Value;
 
 use super::{
-    ARCHIVE_VERSION, RenderArchive, ArchiveRevisionRef,
-    audit::{Actor, AuditEvent, EventType, ArchiveAudit},
+    ARCHIVE_VERSION, ArchiveRevisionRef, RenderArchive,
+    audit::{Actor, ArchiveAudit, AuditEvent, EventType},
     integrity::ArchiveIntegrity,
 };
 use crate::NormordisPdfError;

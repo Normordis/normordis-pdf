@@ -960,9 +960,7 @@ impl PdfBackend for PdfWriterBackend {
         // ── Write pages tree ──────────────────────────────────────────────────
         let page_count = self.page_refs.len() as i32;
         let page_refs: Vec<Ref> = self.page_refs.clone();
-        pdf.pages(self.pages_ref)
-            .count(page_count)
-            .kids(page_refs);
+        pdf.pages(self.pages_ref).count(page_count).kids(page_refs);
 
         // ── Signature objects ─────────────────────────────────────────────────
         // Extract all sig data before taking another &mut pdf borrow.
@@ -1128,7 +1126,11 @@ impl PdfBackend for PdfWriterBackend {
                         d.pair(Name(b"Count"), desc_count);
                     }
                     // Destination: structure destination for PDF/UA-2 (§8.8); XYZ otherwise.
-                    let sd_ref = if use_struct_dest { heading_sd.get(node.entry_idx).copied() } else { None };
+                    let sd_ref = if use_struct_dest {
+                        heading_sd.get(node.entry_idx).copied()
+                    } else {
+                        None
+                    };
                     if let Some(sr) = sd_ref {
                         d.insert(Name(b"Dest"))
                             .array()
@@ -1275,9 +1277,12 @@ impl PdfBackend for PdfWriterBackend {
 
             // PDF/A-4f §6.9: EmbeddedFiles entry required in catalog Names dict.
             if pdfa && pdfa_part >= 4 {
-                cat.insert(Name(b"Names")).dict()
-                    .insert(Name(b"EmbeddedFiles")).dict()
-                    .insert(Name(b"Names")).array();
+                cat.insert(Name(b"Names"))
+                    .dict()
+                    .insert(Name(b"EmbeddedFiles"))
+                    .dict()
+                    .insert(Name(b"Names"))
+                    .array();
             }
 
             // PDF/UA-2: MarkInfo, /Lang, ViewerPreferences, StructTreeRoot
@@ -1553,7 +1558,10 @@ impl PdfBackend for PdfWriterBackend {
         // Group parent_entries by page_idx and sort by mcid within each page.
         let mut by_page: HashMap<usize, Vec<(u32, Ref)>> = HashMap::new();
         for (page_idx, mcid, elem_ref) in &parent_entries {
-            by_page.entry(*page_idx).or_default().push((*mcid, *elem_ref));
+            by_page
+                .entry(*page_idx)
+                .or_default()
+                .push((*mcid, *elem_ref));
         }
         for entries in by_page.values_mut() {
             entries.sort_by_key(|&(mcid, _)| mcid);
@@ -1635,7 +1643,12 @@ fn write_struct_element(
         use crate::compliance::ua::StructTag;
         if matches!(
             tag,
-            StructTag::H1 | StructTag::H2 | StructTag::H3 | StructTag::H4 | StructTag::H5 | StructTag::H6
+            StructTag::H1
+                | StructTag::H2
+                | StructTag::H3
+                | StructTag::H4
+                | StructTag::H5
+                | StructTag::H6
         ) {
             heading_refs.push(elem_ref);
         }
@@ -1656,7 +1669,15 @@ fn write_struct_element(
             }
             StructEvent::BeginGroup { .. } => {
                 let child_ref = write_struct_element(
-                    events, idx, elem_ref, page_refs, alloc, chunk, ns_ref, parent_entries, heading_refs,
+                    events,
+                    idx,
+                    elem_ref,
+                    page_refs,
+                    alloc,
+                    chunk,
+                    ns_ref,
+                    parent_entries,
+                    heading_refs,
                 );
                 struct_children.push(child_ref);
             }
@@ -1698,7 +1719,8 @@ fn write_struct_element(
             _ => None,
         };
         if let Some(ln_name) = ln {
-            elem.insert(Name(b"A")).dict()
+            elem.insert(Name(b"A"))
+                .dict()
                 .pair(Name(b"O"), Name(b"List"))
                 .pair(Name(b"ListNumbering"), Name(ln_name));
         }

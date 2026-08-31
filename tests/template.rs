@@ -61,7 +61,6 @@ fn version_compatibility_v200_is_accepted() {
     assert!(check_version_compatibility("2.0.0").is_ok());
 }
 
-
 // ── 8. resolve_string replaces placeholder ────────────────────────────────────
 
 #[test]
@@ -100,10 +99,12 @@ fn resolve_string_nested_key() {
 
 #[test]
 fn push_ndt_returns_render_error() {
-    let pdf_result = DocumentBuilder::new("NDT Test")
-        .push_ndt(MINIMAL_NDT, MINIMAL_DATA);
+    let pdf_result = DocumentBuilder::new("NDT Test").push_ndt(MINIMAL_NDT, MINIMAL_DATA);
 
-    assert!(pdf_result.is_err(), "push_ndt with NDT 2.0.0 must return Err until renderer is implemented");
+    assert!(
+        pdf_result.is_err(),
+        "push_ndt with NDT 2.0.0 must return Err until renderer is implemented"
+    );
 }
 
 // ── 16. parse_ndt TOML auto-detect ───────────────────────────────────────────
