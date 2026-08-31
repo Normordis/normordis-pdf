@@ -83,6 +83,53 @@ próprio workflow. Ao subir de versão, reconfirmar essa sequência: um prompt
 novo dessincroniza as respostas e o instalador termina com "You have not
 selected any packs!" — que é sucesso aparente seguido de falha.
 
+### 3b. Renderizador NDT 2.0.0 — NÃO IMPLEMENTADO (alta prioridade)
+
+**Ficheiro:** `src/template/renderer.rs`
+
+`render_template` é um stub que devolve sempre erro:
+
+```rust
+Err(TemplateError::RenderError(
+    "NDT 2.0.0 positioned-layout renderer not yet implemented".into(),
+))
+```
+
+Consequência: `DocumentBuilder::push_ndt` não pode ter sucesso com **nenhum**
+documento NDT 2.0.0 válido, por bem formado que seja. O parsing funciona; a
+renderização não existe.
+
+Isto foi descoberto ao migrar os templates de exemplo: depois de os pôr na
+forma correta, o erro deixou de ser `missing field ndt_version` e passou a ser
+o do renderizador. A forma antiga dos templates mascarava o problema, porque a
+desserialização falhava antes de se chegar ao renderizador.
+
+**Estado dos exemplos e templates:**
+
+- `examples/templates/relatorio-simples.ndt.json` — migrado para NDT 2.0.0 e
+  **validado contra `specs/ndt/schemas/ndt.schema.json`** do repositório
+  normordis-formats. Fica pronto para quando o renderizador existir.
+- `examples/03_ndt_template.rs` — único exemplo que ainda falha, exatamente
+  por esta razão. Não foi desativado: a falha é o sintoma correto.
+- `examples/12_compliance.rs` — o bloco NDT foi retirado; era incidental ao
+  propósito do exemplo, que é conformidade PDF/A, e bloqueava o job veraPDF
+  em CI.
+- `oficio-nacional`, `certidao-generica`, `formulario-generico` — continuam na
+  forma antiga (`ndt`/`meta`/`placeholders`/`body`), inválidos contra o schema
+  publicado, e não são usados por nenhum exemplo. Migrá-los sem renderizador
+  seria trabalho especulativo: o que cada um deve produzir é decisão de
+  desenho, não conversão mecânica.
+
+**O que é preciso implementar:** layout posicionado — `campos` com posição
+absoluta, `fluxo` com paginação por overflow, `graficos`, `mobilia`
+(numeração e texto fixo por página) e a resolução de `sequencia` com
+`repeticao: conforme_necessario` e `fonte_overflow`. Ver a estrutura em
+`src/template/model.rs` e o exemplo canónico em
+`normordis-formats/specs/ndt/examples/oficio-generico.ndt.json`.
+
+**Nota de honestidade documental:** o README anuncia suporte NDT. Enquanto
+este item não fechar, essa afirmação está à frente do código.
+
 ### 4. Clippy pre-existente (baixa prioridade)
 
 `cargo clippy --workspace -- -D warnings` tem ~40 erros em ficheiros que **não foram tocados hoje**:
