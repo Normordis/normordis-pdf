@@ -141,12 +141,12 @@ pub fn map_body_from_xml(
                 let list_num_id = p.num_id.unwrap();
                 let mut list_paras: Vec<RawPara> = Vec::new();
                 while i < raw_items.len() {
-                    if let RawItem::Para(p2) = &raw_items[i] {
-                        if p2.num_id == Some(list_num_id) {
-                            list_paras.push(p2.clone());
-                            i += 1;
-                            continue;
-                        }
+                    if let RawItem::Para(p2) = &raw_items[i]
+                        && p2.num_id == Some(list_num_id)
+                    {
+                        list_paras.push(p2.clone());
+                        i += 1;
+                        continue;
                     }
                     break;
                 }
@@ -159,10 +159,10 @@ pub fn map_body_from_xml(
             }
             RawItem::Para(_) => {
                 // Clone to avoid borrowing raw_items while calling ctx
-                if let RawItem::Para(p) = raw_items[i].clone() {
-                    if let Some(v) = render_para(p, ctx) {
-                        result.push(v);
-                    }
+                if let RawItem::Para(p) = raw_items[i].clone()
+                    && let Some(v) = render_para(p, ctx)
+                {
+                    result.push(v);
                 }
                 i += 1;
             }
@@ -224,19 +224,14 @@ fn parse_paragraph(node: &roxmltree::Node) -> RawPara {
                         "numPr" => {
                             let mut nid: Option<u32> = None;
                             for np in ppr.children() {
-                                match np.tag_name().name() {
-                                    "numId" => {
-                                        nid = np
-                                            .attribute((W_NS, "val"))
-                                            .and_then(|v| v.parse().ok());
-                                    }
-                                    _ => {}
+                                if np.tag_name().name() == "numId" {
+                                    nid = np.attribute((W_NS, "val")).and_then(|v| v.parse().ok());
                                 }
                             }
-                            if let Some(n) = nid {
-                                if n != 0 {
-                                    num_id = Some(n);
-                                }
+                            if let Some(n) = nid
+                                && n != 0
+                            {
+                                num_id = Some(n);
                             }
                         }
                         "jc" => {
@@ -285,12 +280,12 @@ fn parse_run(node: &roxmltree::Node, segments: &mut Vec<Segment>) {
                 "b" => {
                     bold = prop
                         .attribute((W_NS, "val"))
-                        .map_or(true, |v| v != "false" && v != "0");
+                        .is_none_or(|v| v != "false" && v != "0");
                 }
                 "i" => {
                     italic = prop
                         .attribute((W_NS, "val"))
-                        .map_or(true, |v| v != "false" && v != "0");
+                        .is_none_or(|v| v != "false" && v != "0");
                 }
                 "u" => {
                     let val = prop.attribute((W_NS, "val")).unwrap_or("single");
@@ -299,7 +294,7 @@ fn parse_run(node: &roxmltree::Node, segments: &mut Vec<Segment>) {
                 "strike" => {
                     strike = prop
                         .attribute((W_NS, "val"))
-                        .map_or(true, |v| v != "false" && v != "0");
+                        .is_none_or(|v| v != "false" && v != "0");
                 }
                 _ => {}
             }
@@ -339,10 +334,10 @@ fn parse_run(node: &roxmltree::Node, segments: &mut Vec<Segment>) {
 /// Searches a `<w:drawing>` subtree for `<a:blip r:embed="...">` and returns the rId.
 fn find_blip_embed(drawing: &roxmltree::Node) -> Option<String> {
     for node in drawing.descendants() {
-        if node.tag_name().name() == "blip" {
-            if let Some(id) = node.attribute((R_NS, "embed")) {
-                return Some(id.to_string());
-            }
+        if node.tag_name().name() == "blip"
+            && let Some(id) = node.attribute((R_NS, "embed"))
+        {
+            return Some(id.to_string());
         }
     }
     None
@@ -399,10 +394,10 @@ fn render_para(raw: RawPara, ctx: &mut MappingContext) -> Option<Value> {
     }
 
     // Heading detection
-    if let Some(sid) = &raw.style_id {
-        if let Some(level) = heading_level(sid) {
-            return Some(render_heading(&raw.segments, level, &raw.alignment, ctx));
-        }
+    if let Some(sid) = &raw.style_id
+        && let Some(level) = heading_level(sid)
+    {
+        return Some(render_heading(&raw.segments, level, &raw.alignment, ctx));
     }
 
     // Plain or rich paragraph
@@ -424,10 +419,10 @@ fn render_heading(
         segments_to_plain_text(segments)
     };
     let mut v = json!({"type": "heading", "level": level, "text": text});
-    if let Some(align) = alignment {
-        if align != "left" {
-            v["alignment"] = json!(align);
-        }
+    if let Some(align) = alignment
+        && align != "left"
+    {
+        v["alignment"] = json!(align);
     }
     v
 }
@@ -481,10 +476,10 @@ fn render_paragraph_value(raw: RawPara, ctx: &mut MappingContext) -> Value {
     if let Some(sr) = style_ref {
         v["style_ref"] = json!(sr);
     }
-    if let Some(align) = &raw.alignment {
-        if align != "left" {
-            v["alignment"] = json!(align);
-        }
+    if let Some(align) = &raw.alignment
+        && align != "left"
+    {
+        v["alignment"] = json!(align);
     }
     v
 }
@@ -617,7 +612,7 @@ fn segments_to_ncrtf(segments: &[Segment]) -> String {
 // ── Misc helpers ──────────────────────────────────────────────────────────────
 
 fn heading_level(style_id: &str) -> Option<u8> {
-    let normalized = style_id.to_lowercase().replace(' ', "").replace('-', "");
+    let normalized = style_id.to_lowercase().replace([' ', '-'], "");
     match normalized.as_str() {
         "heading1" | "ttulo1" | "title1" => Some(1),
         "heading2" | "ttulo2" | "title2" => Some(2),

@@ -24,7 +24,7 @@ pub fn inspect(path: &Path) -> anyhow::Result<PdfSizeSummary> {
         ..Default::default()
     };
 
-    for (_id, object) in &doc.objects {
+    for object in doc.objects.values() {
         let obj_bytes = estimate_object_bytes(object);
         match classify_object(object) {
             ObjKind::Font => summary.font_bytes += obj_bytes,
@@ -126,10 +126,10 @@ fn classify_object(obj: &Object) -> ObjKind {
 
     let dict = &stream.dict;
 
-    if let Ok(subtype) = dict.get(b"Subtype").and_then(|t| t.as_name()) {
-        if subtype == b"Image" {
-            return ObjKind::Image;
-        }
+    if let Ok(subtype) = dict.get(b"Subtype").and_then(|t| t.as_name())
+        && subtype == b"Image"
+    {
+        return ObjKind::Image;
     }
 
     if let Ok(ty) = dict.get(b"Type").and_then(|t| t.as_name()) {

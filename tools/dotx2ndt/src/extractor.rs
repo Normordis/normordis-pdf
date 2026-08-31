@@ -7,6 +7,7 @@ use crate::error::Dotx2NdtError;
 const W_NS: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
 /// All content extracted from a .docx / .dotx ZIP archive.
+#[derive(Default)]
 pub struct DotxExtractor {
     pub document_xml: String,
     pub styles_xml: Option<String>,
@@ -16,19 +17,6 @@ pub struct DotxExtractor {
     pub relationships: HashMap<String, String>,
     /// Media files keyed by path relative to `word/` (e.g. `"media/image1.png"`).
     pub media: HashMap<String, Vec<u8>>,
-}
-
-impl Default for DotxExtractor {
-    fn default() -> Self {
-        Self {
-            document_xml: String::new(),
-            styles_xml: None,
-            numbering_xml: None,
-            settings_xml: None,
-            relationships: HashMap::new(),
-            media: HashMap::new(),
-        }
-    }
 }
 
 impl DotxExtractor {

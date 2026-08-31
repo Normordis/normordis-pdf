@@ -67,17 +67,16 @@ pub fn parse_numbering_xml(xml: &str) -> HashMap<u32, ListType> {
             None => continue,
         };
         for child in node.children() {
-            if child.tag_name().name() == "abstractNumId" {
-                if let Some(abs_id) = child
+            if child.tag_name().name() == "abstractNumId"
+                && let Some(abs_id) = child
                     .attribute((W_NS, "val"))
                     .and_then(|v| v.parse::<u32>().ok())
-                {
-                    let lt = abstract_types
-                        .get(&abs_id)
-                        .copied()
-                        .unwrap_or(ListType::Bullet);
-                    result.insert(num_id, lt);
-                }
+            {
+                let lt = abstract_types
+                    .get(&abs_id)
+                    .copied()
+                    .unwrap_or(ListType::Bullet);
+                result.insert(num_id, lt);
             }
         }
     }
