@@ -118,10 +118,9 @@ pub fn parse_styles_xml(xml: &str) -> Result<Vec<WordStyle>, Dotx2NdtError> {
                     if let Some(val) = child.attribute((
                         "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
                         "val",
-                    )) {
-                        if let Ok(half_pts) = val.parse::<f64>() {
-                            font_size_pt = Some(half_pts / 2.0);
-                        }
+                    )) && let Ok(half_pts) = val.parse::<f64>()
+                    {
+                        font_size_pt = Some(half_pts / 2.0);
                     }
                 }
                 "b" => {
@@ -154,18 +153,16 @@ pub fn parse_styles_xml(xml: &str) -> Result<Vec<WordStyle>, Dotx2NdtError> {
                     if let Some(before) = child.attribute((
                         "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
                         "before",
-                    )) {
-                        if let Ok(twips) = before.parse::<f64>() {
-                            space_before_pt = Some(twips / 20.0);
-                        }
+                    )) && let Ok(twips) = before.parse::<f64>()
+                    {
+                        space_before_pt = Some(twips / 20.0);
                     }
                     if let Some(after) = child.attribute((
                         "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
                         "after",
-                    )) {
-                        if let Ok(twips) = after.parse::<f64>() {
-                            space_after_pt = Some(twips / 20.0);
-                        }
+                    )) && let Ok(twips) = after.parse::<f64>()
+                    {
+                        space_after_pt = Some(twips / 20.0);
                     }
                 }
                 "ind" => {
@@ -190,10 +187,9 @@ pub fn parse_styles_xml(xml: &str) -> Result<Vec<WordStyle>, Dotx2NdtError> {
                     if let Some(hang) = child.attribute((
                         "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
                         "hanging",
-                    )) {
-                        if let Ok(v) = hang.parse::<i64>() {
-                            indent_first_line_twips = Some(-v);
-                        }
+                    )) && let Ok(v) = hang.parse::<i64>()
+                    {
+                        indent_first_line_twips = Some(-v);
                     }
                 }
                 _ => {}
