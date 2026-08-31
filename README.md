@@ -300,4 +300,16 @@ All public items re-exported from `normordis_pdf::*` are considered stable. Inte
 
 ## License
 
-EUPL-1.2 — see [LICENSE](../../LICENSE) or [https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12).
+EUPL-1.2 — see [LICENSE](LICENSE) or [https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12).
+
+### Bundled fonts
+
+This repository redistributes third-party font software, unmodified, under its
+own licences — not under EUPL-1.2. Liberation Sans and Libertinus Serif are
+covered by the SIL Open Font License 1.1; Liberation Serif and Liberation Mono
+are covered by the Liberation Fonts License (GPLv2 with an embedding
+exception). Per-family attribution, versions and licence texts are in
+[assets/fonts/NOTICE.md](assets/fonts/NOTICE.md).
+
+The embedding exception means PDFs produced with these fonts are not made
+subject to the GPL by the embedding itself.
