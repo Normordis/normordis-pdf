@@ -6,7 +6,7 @@ This repository now contains the standalone `normordis-pdf` library crate along 
 - `tools/dotx2ndt`
 - `tools/ndt-tools`
 
-Bash-first build, backup and restore helpers are available in [`scripts/`](scripts/README.md). O fluxo 3-2-1 mantém cópias no SSD e no Google Drive; equivalentes PowerShell permanecem disponíveis para Windows.
+Bash-first build and release helpers are available in [`scripts/`](scripts/README.md); PowerShell equivalents remain available for Windows.
 
 [![Crate](https://img.shields.io/badge/crate-normordis--pdf-blue)](https://crates.io/crates/normordis-pdf)
 [![License: EUPL-1.2](https://img.shields.io/badge/license-EUPL--1.2-blue.svg)](LICENSE)
