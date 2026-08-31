@@ -4,9 +4,11 @@ pub mod jcs;
 pub mod registry;
 pub mod revision;
 
-pub use audit::{Actor, AuditEvent, EventType, ArchiveAudit};
-pub use integrity::{IntegrityFailure, IntegrityReport, ArchiveIntegrity, canonical_hash};
-pub use registry::{ArchiveFilter, ArchiveRecord, ArchiveRecordStatus, ArchiveRecordSummary, ArchiveRegistry};
+pub use audit::{Actor, ArchiveAudit, AuditEvent, EventType};
+pub use integrity::{ArchiveIntegrity, IntegrityFailure, IntegrityReport, canonical_hash};
+pub use registry::{
+    ArchiveFilter, ArchiveRecord, ArchiveRecordStatus, ArchiveRecordSummary, ArchiveRegistry,
+};
 pub use revision::ArchiveRevision;
 
 use base64::Engine as _;
@@ -83,7 +85,9 @@ impl RenderArchive {
 
     /// Appends an audit event, verifying content_hash for documentary events.
     pub fn add_event(&mut self, event: AuditEvent) -> crate::Result<()> {
-        if let Some(ref hash) = event.content_hash && hash != &self.integrity.content_hash {
+        if let Some(ref hash) = event.content_hash
+            && hash != &self.integrity.content_hash
+        {
             return Err(NormordisPdfError::ArchiveAuditError(format!(
                 "content_hash mismatch at event seq {} — content has been modified",
                 self.audit.next_seq()

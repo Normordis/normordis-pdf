@@ -30,7 +30,9 @@ impl ArchiveAudit {
                 event.seq
             )));
         }
-        if let Some(last) = self.events.last() && event.timestamp < last.timestamp {
+        if let Some(last) = self.events.last()
+            && event.timestamp < last.timestamp
+        {
             return Err(NormordisPdfError::ArchiveAuditError(format!(
                 "non-monotonic timestamp at seq {} ({} < {})",
                 event.seq, event.timestamp, last.timestamp
@@ -96,7 +98,10 @@ pub enum EventType {
     RenderPdfGenerated,
     #[serde(rename = "signature.pdf.applied")]
     SignaturePdfApplied,
-    #[serde(rename = "signature.archive.applied", alias = "signature.archive.applied")]
+    #[serde(
+        rename = "signature.archive.applied",
+        alias = "signature.archive.applied"
+    )]
     SignatureArchiveApplied,
     #[serde(rename = "archive.stored")]
     ArchiveStored,

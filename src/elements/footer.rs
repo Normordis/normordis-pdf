@@ -175,10 +175,14 @@ impl SectionedFooter {
 
     /// Resolves which footer to render for a given page number (1-based).
     pub fn resolve(&self, page_number: u32) -> Option<&PageFooter> {
-        if page_number == 1 && let Some(ref f) = self.first_page {
+        if page_number == 1
+            && let Some(ref f) = self.first_page
+        {
             return Some(f);
         }
-        if page_number.is_multiple_of(2) && let Some(ref f) = self.even_pages {
+        if page_number.is_multiple_of(2)
+            && let Some(ref f) = self.even_pages
+        {
             return Some(f);
         }
         self.odd_pages.as_ref()

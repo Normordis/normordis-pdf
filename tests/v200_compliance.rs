@@ -509,7 +509,10 @@ fn v200_38_old_ndt_format_fails_to_parse() {
     // NDT 1.x / legacy format (field `ndt`, `body`) no longer accepted in v3.0.0.
     let ndt = r#"{"ndt": "1.1.0", "body": [{"type": "paragraph", "text": "Compatível."}]}"#;
     let result = normordis_pdf::parse_ndt(ndt);
-    assert!(result.is_err(), "old NDT 1.x format must fail to parse in v3.0.0");
+    assert!(
+        result.is_err(),
+        "old NDT 1.x format must fail to parse in v3.0.0"
+    );
 }
 
 #[test]

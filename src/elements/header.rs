@@ -216,10 +216,14 @@ impl SectionedHeader {
     /// - odd_pages.is_some() → odd_pages
     /// - None (no header for this page)
     pub fn resolve(&self, page_number: u32) -> Option<&InstitutionalHeader> {
-        if page_number == 1 && let Some(ref h) = self.first_page {
+        if page_number == 1
+            && let Some(ref h) = self.first_page
+        {
             return Some(h);
         }
-        if page_number.is_multiple_of(2) && let Some(ref h) = self.even_pages {
+        if page_number.is_multiple_of(2)
+            && let Some(ref h) = self.even_pages
+        {
             return Some(h);
         }
         self.odd_pages.as_ref()

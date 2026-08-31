@@ -832,7 +832,8 @@ fn ndt_43_multiple_paginas_def() {
             {"pagina_def": "rodape", "repeticao": "unica"}
         ]
     }"#;
-    let doc = normordis_pdf::parse_ndt(template).expect("NDT 2.0.0 com múltiplas páginas deve parsear");
+    let doc =
+        normordis_pdf::parse_ndt(template).expect("NDT 2.0.0 com múltiplas páginas deve parsear");
     assert_eq!(doc.paginas_def.len(), 3);
     assert_eq!(doc.sequencia.len(), 3);
 }
@@ -870,13 +871,22 @@ fn ncrtf_44_link_inline_renders_correctly() {
 #[test]
 fn marks_46_superscript_renders_without_panic() {
     let runs = vec![
-        TextRun { text: "H".into(), ..Default::default() },
         TextRun {
-            text: "2".into(),
-            style: AppliedStyle { superscript: true, ..Default::default() },
+            text: "H".into(),
             ..Default::default()
         },
-        TextRun { text: "O".into(), ..Default::default() },
+        TextRun {
+            text: "2".into(),
+            style: AppliedStyle {
+                superscript: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        TextRun {
+            text: "O".into(),
+            ..Default::default()
+        },
     ];
     let bytes = DocumentBuilder::new("test")
         .push(Paragraph::from_runs(runs, TextAlign::Left, None))
@@ -889,10 +899,16 @@ fn marks_46_superscript_renders_without_panic() {
 #[test]
 fn marks_47_subscript_renders_without_panic() {
     let runs = vec![
-        TextRun { text: "CO".into(), ..Default::default() },
+        TextRun {
+            text: "CO".into(),
+            ..Default::default()
+        },
         TextRun {
             text: "2".into(),
-            style: AppliedStyle { subscript: true, ..Default::default() },
+            style: AppliedStyle {
+                subscript: true,
+                ..Default::default()
+            },
             ..Default::default()
         },
     ];
@@ -908,7 +924,10 @@ fn marks_47_subscript_renders_without_panic() {
 fn marks_48_small_caps_renders_without_panic() {
     let runs = vec![TextRun {
         text: "normordis".into(),
-        style: AppliedStyle { small_caps: true, ..Default::default() },
+        style: AppliedStyle {
+            small_caps: true,
+            ..Default::default()
+        },
         ..Default::default()
     }];
     let bytes = DocumentBuilder::new("test")
@@ -922,10 +941,16 @@ fn marks_48_small_caps_renders_without_panic() {
 #[test]
 fn marks_49_font_size_override_renders_without_panic() {
     let runs = vec![
-        TextRun { text: "Normal ".into(), ..Default::default() },
+        TextRun {
+            text: "Normal ".into(),
+            ..Default::default()
+        },
         TextRun {
             text: "Grande".into(),
-            style: AppliedStyle { font_size_override: Some(20.0), ..Default::default() },
+            style: AppliedStyle {
+                font_size_override: Some(20.0),
+                ..Default::default()
+            },
             ..Default::default()
         },
     ];
@@ -941,7 +966,11 @@ fn marks_49_font_size_override_renders_without_panic() {
 fn marks_50_superscript_with_underline_no_panic() {
     let runs = vec![TextRun {
         text: "ref".into(),
-        style: AppliedStyle { superscript: true, underline: true, ..Default::default() },
+        style: AppliedStyle {
+            superscript: true,
+            underline: true,
+            ..Default::default()
+        },
         ..Default::default()
     }];
     let bytes = DocumentBuilder::new("test")
@@ -1091,5 +1120,8 @@ fn kp_55_with_feature_kp_produces_lines() {
         &[],
         LineBreakingMode::KnuthPlass,
     );
-    assert!(!result.lines.is_empty(), "KP must produce at least one line");
+    assert!(
+        !result.lines.is_empty(),
+        "KP must produce at least one line"
+    );
 }

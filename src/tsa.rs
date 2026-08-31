@@ -152,17 +152,25 @@ fn navigate_pkcs7(data: &[u8]) -> Result<NavResult> {
     // OID (signedData)
     let oid_el = nav_el!(data, ci.content_start, 0x06, "ContentInfo: expected OID")?;
     // [0] EXPLICIT wrapping SignedData
-    let exp0 = nav_el!(data, oid_el.full_end(), 0xA0, "ContentInfo: expected [0] EXPLICIT")?;
+    let exp0 = nav_el!(
+        data,
+        oid_el.full_end(),
+        0xA0,
+        "ContentInfo: expected [0] EXPLICIT"
+    )?;
     // SignedData SEQUENCE
-    let sd = nav_el!(data, exp0.content_start, 0x30, "SignedData: expected SEQUENCE")?;
+    let sd = nav_el!(
+        data,
+        exp0.content_start,
+        0x30,
+        "SignedData: expected SEQUENCE"
+    )?;
 
     // Skip version (INTEGER), digestAlgorithms (SET), encapContentInfo (SEQUENCE)
     let mut sd_pos = sd.content_start;
     for label in ["version", "digestAlgorithms", "encapContentInfo"] {
         sd_pos = read_el(data, sd_pos)
-            .ok_or_else(|| {
-                NormordisPdfError::TsaError(format!("SignedData: missing {label}"))
-            })?
+            .ok_or_else(|| NormordisPdfError::TsaError(format!("SignedData: missing {label}")))?
             .full_end();
     }
     // Skip optional certificates [0] and crls [1]
@@ -177,7 +185,12 @@ fn navigate_pkcs7(data: &[u8]) -> Result<NavResult> {
     // signerInfos SET
     let si_set = nav_el!(data, sd_pos, 0x31, "SignedData: expected signerInfos SET")?;
     // First SignerInfo SEQUENCE
-    let si = nav_el!(data, si_set.content_start, 0x30, "signerInfos: expected SEQUENCE")?;
+    let si = nav_el!(
+        data,
+        si_set.content_start,
+        0x30,
+        "signerInfos: expected SEQUENCE"
+    )?;
 
     let mut pos = si.content_start;
     // version INTEGER
@@ -193,7 +206,12 @@ fn navigate_pkcs7(data: &[u8]) -> Result<NavResult> {
     // signatureAlgorithm SEQUENCE
     pos = nav_el!(data, pos, 0x30, "SignerInfo: expected signatureAlgorithm")?.full_end();
     // signature OCTET STRING
-    let sig_el = nav_el!(data, pos, 0x04, "SignerInfo: expected signature OCTET STRING")?;
+    let sig_el = nav_el!(
+        data,
+        pos,
+        0x04,
+        "SignerInfo: expected signature OCTET STRING"
+    )?;
     pos = sig_el.full_end();
 
     // Check for existing [1] unsignedAttrs
@@ -235,10 +253,10 @@ fn build_timestamp_request(hash: &[u8]) -> Vec<u8> {
         .unwrap_or(0x4E6F726D6F726469); // "Normord" as static fallback
 
     der_seq(&[
-        vec![0x02, 0x01, 0x01],  // version v1(1)
+        vec![0x02, 0x01, 0x01], // version v1(1)
         msg_imprint,
-        der_integer_u64(nonce),  // nonce
-        vec![0x01, 0x01, 0xFF],  // certReq TRUE
+        der_integer_u64(nonce), // nonce
+        vec![0x01, 0x01, 0xFF], // certReq TRUE
     ])
 }
 
@@ -317,26 +335,17 @@ pub fn embed_timestamp(pkcs7_der: &[u8], tst_der: &[u8]) -> Result<Vec<u8>> {
     // SignerInfo: prefix (up to and including signature) + new [1] + suffix
     let si_prefix = &d[nav.si.content_start..nav.insert_pos];
     let si_suffix = &d[nav.remove_end..nav.si.full_end()];
-    let new_si = der_wrap(
-        0x30,
-        &chain3(si_prefix, &new_ua, si_suffix),
-    );
+    let new_si = der_wrap(0x30, &chain3(si_prefix, &new_ua, si_suffix));
 
     // signerInfos SET: pre-first (empty in practice) + new_si + post-first
     let si_set_prefix = &d[nav.si_set.content_start..nav.si.tag_pos];
     let si_set_suffix = &d[nav.si.full_end()..nav.si_set.full_end()];
-    let new_si_set = der_wrap(
-        0x31,
-        &chain3(si_set_prefix, &new_si, si_set_suffix),
-    );
+    let new_si_set = der_wrap(0x31, &chain3(si_set_prefix, &new_si, si_set_suffix));
 
     // SignedData: before signerInfos + new signerInfos + after signerInfos
     let sd_prefix = &d[nav.sd.content_start..nav.si_set.tag_pos];
     let sd_suffix = &d[nav.si_set.full_end()..nav.sd.full_end()];
-    let new_sd = der_wrap(
-        0x30,
-        &chain3(sd_prefix, &new_si_set, sd_suffix),
-    );
+    let new_sd = der_wrap(0x30, &chain3(sd_prefix, &new_si_set, sd_suffix));
 
     // [0] EXPLICIT wrapping SignedData
     let new_exp0 = der_wrap(0xA0, &new_sd);
@@ -403,8 +412,7 @@ mod tests {
 
     /// Builds a minimal but structurally valid CMS PKCS#7 for testing.
     fn make_test_pkcs7(sig_bytes: &[u8]) -> Vec<u8> {
-        const SIGNED_DATA_OID: &[u8] =
-            &[0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x07, 0x02];
+        const SIGNED_DATA_OID: &[u8] = &[0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x07, 0x02];
         const SHA256_OID: &[u8] = &[0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01];
         const DATA_OID: &[u8] = &[0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x07, 0x01];
         const RSA_OID: &[u8] = &[0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x01];
@@ -430,10 +438,7 @@ mod tests {
             der_wrap(0x31, &signer_info),
         ]);
 
-        der_seq(&[
-            der_oid(SIGNED_DATA_OID),
-            der_wrap(0xA0, &signed_data),
-        ])
+        der_seq(&[der_oid(SIGNED_DATA_OID), der_wrap(0xA0, &signed_data)])
     }
 
     #[test]
@@ -488,7 +493,8 @@ mod tests {
         let sig: Vec<u8> = (0u8..32).collect();
         let pkcs7 = make_test_pkcs7(&sig);
         let nav = navigate_pkcs7(&pkcs7).expect("navigate_pkcs7");
-        let got = &pkcs7[nav.sig_el.content_start..nav.sig_el.content_start + nav.sig_el.content_len];
+        let got =
+            &pkcs7[nav.sig_el.content_start..nav.sig_el.content_start + nav.sig_el.content_len];
         assert_eq!(got, sig.as_slice());
     }
 
@@ -531,8 +537,13 @@ mod tests {
 
         // Navigation must succeed on the patched result
         let nav = navigate_pkcs7(&patched).expect("navigate patched PKCS#7");
-        let recovered = &patched[nav.sig_el.content_start..nav.sig_el.content_start + nav.sig_el.content_len];
-        assert_eq!(recovered, sig.as_slice(), "signature preserved in patched PKCS#7");
+        let recovered =
+            &patched[nav.sig_el.content_start..nav.sig_el.content_start + nav.sig_el.content_len];
+        assert_eq!(
+            recovered,
+            sig.as_slice(),
+            "signature preserved in patched PKCS#7"
+        );
     }
 
     #[test]
@@ -553,7 +564,8 @@ mod tests {
         );
         // Original signature must still be intact
         let nav = navigate_pkcs7(&after_second).expect("navigate after second embed");
-        let sig_got = &after_second[nav.sig_el.content_start..nav.sig_el.content_start + nav.sig_el.content_len];
+        let sig_got = &after_second
+            [nav.sig_el.content_start..nav.sig_el.content_start + nav.sig_el.content_len];
         assert_eq!(sig_got, sig.as_slice());
     }
 

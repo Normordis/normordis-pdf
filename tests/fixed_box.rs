@@ -240,7 +240,10 @@ fn ncrtf_table_block_deserialises() {
     let doc = normordis_pdf::parse_ncrtf(json).expect("table block must parse");
     assert_eq!(doc.content.len(), 1);
     assert!(
-        matches!(doc.content[0], normordis_pdf::richtext::model::Block::Table(_)),
+        matches!(
+            doc.content[0],
+            normordis_pdf::richtext::model::Block::Table(_)
+        ),
         "block must be Table variant"
     );
 }

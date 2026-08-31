@@ -244,7 +244,8 @@ impl UaValidator {
                     && *tag != StructTag::Document
                     && *tag != StructTag::DocumentFragment
                 {
-                    v.errors.push(UaError::InvalidRootTag(tag.pdf_name().to_string()));
+                    v.errors
+                        .push(UaError::InvalidRootTag(tag.pdf_name().to_string()));
                 }
             }
         }

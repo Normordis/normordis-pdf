@@ -295,7 +295,9 @@ pub(crate) fn render_body_elements(
                 if let Some(lvl) = toc_el.max_level {
                     toc = toc.max_level(lvl);
                 }
-                if let Some(ref lc) = toc_el.leader_char && let Some(c) = lc.chars().next() {
+                if let Some(ref lc) = toc_el.leader_char
+                    && let Some(c) = lc.chars().next()
+                {
                     toc = toc.dot_leader(c);
                 }
                 elements.push(Box::new(toc));
@@ -365,4 +367,3 @@ fn parse_overflow(s: Option<&str>) -> OverflowPolicy {
         _ => OverflowPolicy::Truncate,
     }
 }
-

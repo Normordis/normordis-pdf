@@ -431,7 +431,6 @@ impl DocumentBuilder {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-
 // ── SigningBuilder ────────────────────────────────────────────────────────────
 
 /// A builder pre-configured with a [`SignatureConfig`].

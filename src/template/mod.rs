@@ -11,8 +11,9 @@ pub use registry::TemplateFilter;
 pub use renderer::render_template;
 
 pub use archive_pipeline::{
-    CompileOptions, compile_ndt, parse_archive, render_archive, render_archive_prepared_for_signing,
-    render_archive_prepared_for_signing_with_fonts, render_archive_with_fonts, verify_archive,
+    CompileOptions, compile_ndt, parse_archive, render_archive,
+    render_archive_prepared_for_signing, render_archive_prepared_for_signing_with_fonts,
+    render_archive_with_fonts, verify_archive,
 };
 mod archive_pipeline;
 

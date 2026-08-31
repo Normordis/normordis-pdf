@@ -92,8 +92,8 @@ pub fn verify(archive: &super::RenderArchive) -> crate::Result<IntegrityReport> 
     let actual_content = canonical_hash(&archive.content);
     let actual_styles = canonical_hash(&archive.styles);
 
-    let meta_val =
-        serde_json::to_value(&archive.meta).map_err(|e| NormordisPdfError::SerdeError(e.to_string()))?;
+    let meta_val = serde_json::to_value(&archive.meta)
+        .map_err(|e| NormordisPdfError::SerdeError(e.to_string()))?;
 
     let content_ok = actual_content == archive.integrity.content_hash;
     let styles_ok = actual_styles == archive.integrity.styles_hash;
@@ -158,7 +158,9 @@ fn verify_audit_chain(audit: &super::audit::ArchiveAudit) -> bool {
             return false;
         }
 
-        if let Some(prev) = prev_ts && event.timestamp.as_str() < prev {
+        if let Some(prev) = prev_ts
+            && event.timestamp.as_str() < prev
+        {
             return false;
         }
         prev_ts = Some(&event.timestamp);
