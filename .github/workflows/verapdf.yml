@@ -19,6 +19,8 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
   VERAPDF_VER: "1.30.2"
+  VERAPDF_SERIES: "1.30"
+  VERAPDF_SHA256: "6cc6341cb1af644044054b81f00a6590a7918abb18f762243de115258bcad838"
   VERAPDF_HOME: "/home/runner/verapdf"
 
 jobs:
@@ -51,31 +53,39 @@ jobs:
 
       # veraPDF uses an IzPack installer.  We drive it non-interactively with
       # an auto-install XML (IzPack 5 "automated installation" format).
+      # O instalador NAO existe nas releases do GitHub — o repositorio
+      # veraPDF-apps so publica tags de build. A origem oficial e
+      # software.verapdf.org. O ficheiro e fixado por sha256.
       - name: Install veraPDF ${{ env.VERAPDF_VER }}
         run: |
-          wget -q \
-            "https://github.com/veraPDF/veraPDF-apps/releases/download/v${VERAPDF_VER}/verapdf-greenfield-${VERAPDF_VER}-installer.zip"
-          unzip -q "verapdf-greenfield-${VERAPDF_VER}-installer.zip"
+          set -euo pipefail
+          zip="verapdf-greenfield-${VERAPDF_VER}-installer.zip"
+          curl -fsSL --retry 3 --retry-delay 5 -o "$zip" \
+            "https://software.verapdf.org/releases/${VERAPDF_SERIES}/${zip}"
+          echo "${VERAPDF_SHA256}  $zip" | sha256sum -c -
+          unzip -q "$zip"
 
-          cat > verapdf-auto-install.xml << 'EOF'
-          <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-          <AutomatedInstallation langpack="eng">
-            <com.izforge.izpack.panels.hello.HelloPanel/>
-            <com.izforge.izpack.panels.licence.LicencePanel>
-              <com.izforge.izpack.panels.licence.LicencePanel-licence>ACCEPTED</com.izforge.izpack.panels.licence.LicencePanel-licence>
-            </com.izforge.izpack.panels.licence.LicencePanel>
-            <com.izforge.izpack.panels.target.TargetPanel>
-              <installpath>/home/runner/verapdf</installpath>
-            </com.izforge.izpack.panels.target.TargetPanel>
-            <com.izforge.izpack.panels.install.InstallPanel/>
-            <com.izforge.izpack.panels.finish.FinishPanel/>
-          </AutomatedInstallation>
-          EOF
+          # A instalacao automatizada por XML nao funciona neste instalador:
+          # os paineis sao HTMLHelloPanel/TargetPanel/PacksPanel/InstallPanel/
+          # FinishPanel e o helper de automacao aborta sem diagnostico. O modo
+          # consola e o caminho suportado. Sequencia de respostas, validada
+          # contra a 1.30.2:
+          #   1        continuar do ecra inicial
+          #   <path>   caminho de instalacao
+          #   O        confirmar criacao do diretorio
+          #   1        continuar para a selecao de pacotes
+          #   Y x5     incluir todos os pacotes opcionais
+          #   1 1      concluir
+          # Ao subir de versao, reconfirmar a sequencia: um prompt novo
+          # dessincroniza as respostas e o instalador termina com
+          # "You have not selected any packs!".
+          printf '1\n%s\nO\n1\nY\nY\nY\nY\nY\n1\n1\n' "${VERAPDF_HOME}" \
+            | java -jar \
+              "verapdf-greenfield-${VERAPDF_VER}/verapdf-izpack-installer-${VERAPDF_VER}.jar" \
+              -console
 
-          java -jar \
-            "verapdf-greenfield-${VERAPDF_VER}/verapdf-greenfield-${VERAPDF_VER}-installer.jar" \
-            verapdf-auto-install.xml
-
+          # O executavel fica na raiz da instalacao, nao em bin/.
+          test -x "${VERAPDF_HOME}/verapdf"
           echo "${VERAPDF_HOME}" >> "$GITHUB_PATH"
 
       - name: Verify veraPDF installation

@@ -59,31 +59,29 @@ let (insert_pos, remove_end) = if data.get(pos).copied() == Some(0xA1) {
 
 ---
 
-### 3. veraPDF CI — verificação do IzPack XML
+### 3. veraPDF CI — RESOLVIDO
 
 **Ficheiro:** `.github/workflows/verapdf.yml`
 
-**Problema:** O auto-install XML foi construído com base na estrutura genérica do IzPack 5.x. Não foi testado contra o instalador real do veraPDF 1.30.x. Pode falhar por:
-- `PacksPanel` não incluído no XML (o instalador pode exigi-lo)
-- Estrutura interna do ZIP diferente da assumida (`verapdf-greenfield-1.30.2/installer.jar` vs. directório diferente)
-- Script `verapdf` instalado em `/home/runner/verapdf/bin/` em vez de `/home/runner/verapdf/`
+As dúvidas levantadas aqui foram verificadas contra o instalador real do
+veraPDF 1.30.2, num sistema com Java. Resultados:
 
-**Para verificar:**
-```bash
-# Num sistema com Java:
-wget https://github.com/veraPDF/veraPDF-apps/releases/download/v1.30.2/verapdf-greenfield-1.30.2-installer.zip
-unzip -v verapdf-greenfield-1.30.2-installer.zip | head -20   # ver estrutura real do ZIP
-java -jar verapdf-greenfield-1.30.2-installer.jar -help       # ver opções do instalador
-```
+| Dúvida | Resposta verificada |
+|---|---|
+| Origem do download | **Não existe** nas releases do GitHub — `veraPDF-apps` só publica tags de build. A origem oficial é `software.verapdf.org/releases/<serie>/`. Era esta a causa do exit 8. |
+| Nome do JAR | `verapdf-izpack-installer-1.30.2.jar`, dentro de `verapdf-greenfield-1.30.2/`. O workflow assumia `verapdf-greenfield-1.30.2-installer.jar`. |
+| `PacksPanel` | Necessário. A ordem real é `HTMLHelloPanel → TargetPanel → PacksPanel → InstallPanel → FinishPanel`; não existe painel de licença. |
+| Instalação por XML automatizado | **Não funciona.** O helper de automação aborta com `[ Automated installation FAILED! ]` sem diagnóstico, mesmo com os painéis corretos. Substituído por modo consola com respostas por `stdin`. |
+| Localização do executável | Raiz da instalação (`$VERAPDF_HOME/verapdf`), **não** em `bin/`. A suposição registada aqui estava errada. |
 
-**Fallback alternativo:** Se o IzPack falhar, instalar via apt se existir PPA, ou invocar o JAR directamente:
-```bash
-# Alternativa sem instalador (se o greenfield for executável directamente):
-wget .../verapdf-greenfield-1.30.2.jar
-alias verapdf="java -jar verapdf-greenfield-1.30.2.jar"
-```
+O passo de instalação passou a fixar o ficheiro por `sha256` e a verificar
+`test -x "$VERAPDF_HOME/verapdf"` antes de o pôr no PATH, para falhar cedo e
+com diagnóstico em vez de falhar mais à frente.
 
----
+A sequência de respostas do modo consola está documentada em comentário no
+próprio workflow. Ao subir de versão, reconfirmar essa sequência: um prompt
+novo dessincroniza as respostas e o instalador termina com "You have not
+selected any packs!" — que é sucesso aparente seguido de falha.
 
 ### 4. Clippy pre-existente (baixa prioridade)
 
