@@ -31,3 +31,12 @@ service-account*.json
 # têm de ser versionados. Acrescentar então uma exceção explícita, como em
 # normordis-formats:
 #   !tests/fixtures/**/*.pem
+
+# Scripts de gestão local — backup, restauro e unidades systemd deste servidor.
+# Úteis para a manutenção da máquina, sem interesse para quem usa a biblioteca.
+# Mantidos no disco, no caminho que a unidade systemd espera, fora do Git.
+/scripts/bash/backup/
+/scripts/powershell/backup.ps1
+/scripts/powershell/restore.ps1
+/scripts/systemd/
+/scripts/README.local.md
