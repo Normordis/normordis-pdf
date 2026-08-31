@@ -1,68 +1,69 @@
 {
-  "ndt": "1.0.0",
-  "meta": {
-    "title": "Relatório Simples",
-    "description": "Template base para relatórios institucionais"
+  "ndt_version": "2.0.0",
+  "schema_id": "relatorio-simples",
+  "versao_ndt": "2.0.0",
+  "titulo": "Relatório simples",
+  "emissor": "NORMORDIS",
+  "estilos": {
+    "fonte_padrao": { "familia": "Helvetica", "tamanho": 11 },
+    "cor_texto": "#1A1A1A",
+    "cor_primaria": "#003366",
+    "espacamento_entre_paragrafos_mm": 4,
+    "identacao_lista_mm": 6,
+    "cabecalhos": [
+      { "nivel": 1, "fonte": { "tamanho": 14, "peso": "bold" } },
+      { "nivel": 2, "fonte": { "tamanho": 12, "peso": "bold" } }
+    ]
   },
-  "placeholders": {
-    "entity_name": { "type": "string", "required": true },
-    "document_title": { "type": "string", "required": true },
-    "document_date": { "type": "string", "required": true },
-    "reference": { "type": "string", "required": false },
-    "author": { "type": "string", "required": false },
-    "body_content": { "type": "ncrtf", "required": false }
+  "layout": {
+    "formato": "A4",
+    "orientacao": "portrait",
+    "margens": { "topo": 20, "fundo": 20, "esq": 20, "dir": 20 }
   },
-  "body": [
+  "paginas_def": [
     {
-      "type": "heading",
-      "text": "{{entity_name}}",
-      "level": 1
-    },
-    {
-      "type": "heading",
-      "text": "{{document_title}}",
-      "level": 2
-    },
-    {
-      "type": "paragraph",
-      "text": "Data: {{document_date}}",
-      "alignment": "left"
-    },
-    {
-      "type": "conditional",
-      "condition": "reference",
-      "operator": "exists",
-      "then": [
-        {
-          "type": "paragraph",
-          "text": "Referência: {{reference}}",
-          "alignment": "left"
-        }
+      "id": "relatorio_pag1",
+      "graficos": [
+        { "tipo": "linha", "de": { "x": 0, "y": 32 }, "para": { "x": 170, "y": 32 }, "espessura": 0.4, "cor": "#003366", "estilo": "solido" }
       ],
-      "else": []
-    },
-    {
-      "type": "spacer",
-      "height_mm": 6.0
-    },
-    {
-      "type": "conditional",
-      "condition": "body_content",
-      "operator": "exists",
-      "then": [
-        {
-          "type": "rich_text",
-          "content": "{{body_content}}",
-          "source": "placeholder"
-        }
+      "campos": [
+        { "referencia": "entity_name", "posicao": { "x": 0, "y": 0 }, "largura": 170, "altura": 6,
+          "fonte": { "familia": "Helvetica", "tamanho": 11, "peso": "bold", "cor": "#003366" }, "alinhamento": "esquerda" },
+        { "referencia": "document_title", "posicao": { "x": 0, "y": 12 }, "largura": 170, "altura": 8,
+          "fonte": { "familia": "Helvetica", "tamanho": 14, "peso": "bold" }, "alinhamento": "esquerda" },
+        { "referencia": "reference", "posicao": { "x": 0, "y": 22 }, "largura": 85, "altura": 5,
+          "fonte": { "familia": "Helvetica", "tamanho": 9, "cor": "#666666" }, "alinhamento": "esquerda" },
+        { "referencia": "document_date", "posicao": { "x": 85, "y": 22 }, "largura": 85, "altura": 5,
+          "fonte": { "familia": "Helvetica", "tamanho": 9, "cor": "#666666" }, "alinhamento": "direita" }
       ],
-      "else": [
-        {
-          "type": "paragraph",
-          "text": "Sem conteúdo.",
-          "alignment": "left"
-        }
+      "fluxo": {
+        "y_inicio": 42,
+        "elementos": [
+          { "tipo": "corpo", "referencia": "body_content" },
+          { "tipo": "espaco", "altura": 10 },
+          { "tipo": "campo", "referencia": "author", "fonte": { "familia": "Helvetica", "tamanho": 10, "peso": "bold" } }
+        ]
+      },
+      "mobilia": [
+        { "tipo": "numero_pagina", "formato": "Pág. {n}/{total}", "posicao": { "x": 145, "y": 281 },
+          "fonte": { "familia": "Helvetica", "tamanho": 8, "cor": "#666666" } }
+      ]
+    },
+    {
+      "id": "relatorio_cont",
+      "graficos": [
+        { "tipo": "linha", "de": { "x": 0, "y": 18 }, "para": { "x": 170, "y": 18 }, "espessura": 0.3, "cor": "#003366", "estilo": "solido" }
+      ],
+      "campos": [],
+      "fluxo": { "y_inicio": 24, "elementos": [ { "tipo": "corpo", "referencia": "body_content" } ] },
+      "mobilia": [
+        { "tipo": "numero_pagina", "formato": "Pág. {n}/{total}", "posicao": { "x": 145, "y": 281 },
+          "fonte": { "familia": "Helvetica", "tamanho": 8, "cor": "#666666" } }
       ]
     }
+  ],
+  "sequencia": [
+    { "pagina_def": "relatorio_pag1", "repeticao": "unica" },
+    { "pagina_def": "relatorio_cont", "repeticao": "conforme_necessario", "fonte_overflow": "body_content" }
   ]
 }
