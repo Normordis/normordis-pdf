@@ -84,39 +84,19 @@ fn main() -> Result<()> {
         pdf_opacity.len() / 1024
     );
 
-    // ── Classificação automática via NDT 2.0.0 output block ──────────
-    let ndt_template = r#"{
-        "ndt": "2.0.0",
-        "meta": { "title": "Ofício Confidencial" },
-        "output": {
-            "standard": "pdf_a_1b",
-            "compression": "best",
-            "classification": "confidencial",
-            "document_ref": "OFC/2026/007"
-        },
-        "body": [
-            { "type": "paragraph", "text": "Este ofício é {{classificacao}}." }
-        ]
-    }"#;
-    let ndt_data = r#"{"ndt_data":"1.0.0","data":{"classificacao":"confidencial"}}"#;
-
-    let pdf_ndt = DocumentBuilder::new("Ofício Confidencial")
-        .push_ndt(ndt_template, ndt_data)?
-        .render_to_bytes()?;
-
-    let path_n = out_dir.join("normaxis_ndt200.pdf");
-    std::fs::write(&path_n, &pdf_ndt)?;
-    println!(
-        "NDT 2.0.0:      {} ({} KB)",
-        path_n.display(),
-        pdf_ndt.len() / 1024
-    );
+    // ── NDT 2.0.0 ────────────────────────────────────────────────────
+    // Este exemplo demonstrava classificação automática a partir de um bloco
+    // NDT. O bloco foi retirado porque o renderizador de layout posicionado
+    // do NDT 2.0.0 ainda não está implementado — ver
+    // src/template/renderer.rs::render_template e o item correspondente em
+    // TODO.md. O template NDT 2.0.0 válido continua em
+    // examples/templates/relatorio-simples.ndt.json, pronto para quando o
+    // renderizador existir; o exemplo 03_ndt_template exercita-o.
 
     println!("\nChecklist visual:");
     println!("  □ PDF/A: verificar com veraPDF — zero erros");
     println!("  □ Marca de água INTERNO em azul translúcido (classif. auto)");
     println!("  □ Marca de água RASCUNHO com opacidade real");
-    println!("  □ NDT 2.0.0: marca de água CONFIDENCIAL automática");
     println!("  □ PDF backend: {}", PDF_BACKEND);
 
     Ok(())
