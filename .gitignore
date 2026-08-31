@@ -1,6 +1,33 @@
 /target
+/dist
+
+# Configuração local de ferramentas de agente
 /.claude
+/.codex
+/.agents
 AGENTS.md
 
-/dist
-/tools/verify-pdf
+# Segredos e material criptográfico local — nunca devem ser publicados.
+# Use ficheiros `.example` sem valores reais para documentar configuração.
+.env
+.env.*
+!.env.example
+!.env.*.example
+secrets/
+private/
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa
+id_ed25519
+credentials.json
+service-account*.json
+
+# ATENÇÃO: se vierem a existir fixtures de assinatura ou TSA (ver TODO.md),
+# os certificados e âncoras dessas fixtures são material público por desenho e
+# têm de ser versionados. Acrescentar então uma exceção explícita, como em
+# normordis-formats:
+#   !tests/fixtures/**/*.pem

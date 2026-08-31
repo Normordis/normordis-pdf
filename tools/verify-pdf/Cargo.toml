@@ -1,0 +1,11 @@
+[package]
+name = "verify-pdf"
+version = "0.1.0"
+edition = "2024"
+description = "CLI validator for normordis-pdf output — invokes veraPDF and reports PDF/A-4f + PDF/UA-2 conformance"
+license = "EUPL-1.2"
+publish = false
+
+[[bin]]
+name = "verify-pdf"
+path = "src/main.rs"
