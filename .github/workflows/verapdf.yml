@@ -110,6 +110,15 @@ jobs:
             --flavour 1b \
             --pdfa-only
 
+      # Validate PDF/A-2b — o documento com marca de água translúcida usa o
+      # perfil que permite transparência (o PDF/A-1 proíbe-a e a biblioteca
+      # recusa essa combinação).
+      - name: Validate PDF/A-2b
+        run: |
+          target/debug/verify-pdf /tmp/normordis_pdfa2b.pdf \
+            --flavour 2b \
+            --pdfa-only
+
       # Validate PDF/UA-2.  The -f ua2 flag requires veraPDF 1.30+.
       - name: Validate PDF/UA-2
         run: |

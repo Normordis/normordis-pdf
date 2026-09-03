@@ -18,7 +18,9 @@ fn main() -> Result<()> {
             engine_version: VERSION.into(),
             entity_id: "cm-lisboa".into(),
             document_ref: Some("ACT/2026/001".into()),
-            classification: SecurityClassification::Internal,
+            // Public: sem marca de água automática — PDF/A-1 proíbe
+            // transparência e a biblioteca recusa a combinação.
+            classification: SecurityClassification::Public,
             generated_at: "2026-01-01T00:00:00Z".into(),
             ndt_version: NDT_VERSION.into(),
             framework_version: None,
@@ -53,6 +55,36 @@ fn main() -> Result<()> {
         "PDF/A-1b:       {} ({} KB)",
         path_a.display(),
         pdf_a.len() / 1024
+    );
+
+    // ── PDF/A-2b com classificação e marca de água translúcida ───────
+    // O PDF/A-2 (ISO 19005-2) permite transparência; é o perfil correto
+    // para documentos com marca de água de classificação translúcida.
+    let pdf_a2 = DocumentBuilder::new("Despacho n.º 7/2026")
+        .standard(PdfStandard::PdfA2b)
+        .compression(CompressionLevel::Best)
+        .traceability(TraceabilityMetadata {
+            engine_version: VERSION.into(),
+            entity_id: "cm-lisboa".into(),
+            document_ref: Some("DSP/2026/007".into()),
+            classification: SecurityClassification::Internal,
+            generated_at: "2026-01-01T00:00:00Z".into(),
+            ndt_version: NDT_VERSION.into(),
+            framework_version: None,
+        })
+        .push(Section::new("Despacho", 1))
+        .push(Paragraph::new(
+            "Determino a abertura do procedimento referido em epígrafe, nos \
+             termos da informação técnica anexa.",
+        ))
+        .render_to_bytes()?;
+
+    let path_a2 = out_dir.join("normordis_pdfa2b.pdf");
+    std::fs::write(&path_a2, &pdf_a2)?;
+    println!(
+        "PDF/A-2b:       {} ({} KB)",
+        path_a2.display(),
+        pdf_a2.len() / 1024
     );
 
     // ── Opacidade real na marca de água ───────────────────────────────
@@ -95,7 +127,7 @@ fn main() -> Result<()> {
 
     println!("\nChecklist visual:");
     println!("  □ PDF/A: verificar com veraPDF — zero erros");
-    println!("  □ Marca de água INTERNO em azul translúcido (classif. auto)");
+    println!("  □ PDF/A-2b: marca de água INTERNO translúcida (classif. auto)");
     println!("  □ Marca de água RASCUNHO com opacidade real");
     println!("  □ PDF backend: {}", PDF_BACKEND);
 
