@@ -588,3 +588,69 @@ fn v200_44_ndt_signature_model_deserialises() {
     let field = sig.field.as_ref().expect("field must be present");
     assert_eq!(field.label.as_deref(), Some("Assinatura"));
 }
+
+// ── PDF/A-1 × transparência (ISO 19005-1 §6.4) ───────────────────────────────
+
+/// PDF/A-1 proíbe transparência: a biblioteca recusa em vez de emitir um
+/// ficheiro que declara conformidade que não tem.
+#[test]
+fn pdfa1_with_translucent_watermark_is_refused() {
+    let result = DocumentBuilder::new("Teste A-1 vs alfa")
+        .standard(PdfStandard::PdfA1b)
+        .watermark(Watermark::new("RASCUNHO").opacity(0.2))
+        .push(Paragraph::new("Conteúdo."))
+        .render_to_bytes();
+    let err = result.expect_err("A-1b com opacidade < 1.0 tem de ser recusado");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("19005-1") && msg.contains("transpar"),
+        "mensagem deve citar a norma e a causa, obteve: {msg}"
+    );
+}
+
+/// A marca de água automática de classificação também é transparência:
+/// A-1b + classificação não-pública tem de ser recusado pelo mesmo motivo.
+#[test]
+fn pdfa1_with_auto_classification_watermark_is_refused() {
+    let result = DocumentBuilder::new("Teste A-1 vs classif")
+        .standard(PdfStandard::PdfA1b)
+        .traceability(TraceabilityMetadata {
+            engine_version: VERSION.into(),
+            entity_id: "t".into(),
+            document_ref: None,
+            classification: SecurityClassification::Internal,
+            generated_at: "2026-01-01T00:00:00Z".into(),
+            ndt_version: "2.0.0".into(),
+            framework_version: None,
+        })
+        .push(Paragraph::new("Conteúdo."))
+        .render_to_bytes();
+    assert!(
+        result.is_err(),
+        "classificação Internal implica marca translúcida — A-1b deve recusar"
+    );
+}
+
+/// Em PDF/A-2b a mesma combinação é legal e tem de continuar a funcionar.
+#[test]
+fn pdfa2_with_translucent_watermark_renders() {
+    let bytes = DocumentBuilder::new("Teste A-2 com alfa")
+        .standard(PdfStandard::PdfA2b)
+        .watermark(Watermark::new("RASCUNHO").opacity(0.2))
+        .push(Paragraph::new("Conteúdo."))
+        .render_to_bytes()
+        .expect("A-2b permite transparência");
+    assert!(bytes.starts_with(b"%PDF-"));
+}
+
+/// Marca de água totalmente opaca não é transparência: A-1b aceita.
+#[test]
+fn pdfa1_with_opaque_watermark_renders() {
+    let bytes = DocumentBuilder::new("Teste A-1 opaco")
+        .standard(PdfStandard::PdfA1b)
+        .watermark(Watermark::new("CÓPIA").opacity(1.0))
+        .push(Paragraph::new("Conteúdo."))
+        .render_to_bytes()
+        .expect("opacidade 1.0 é legal em A-1b");
+    assert!(bytes.starts_with(b"%PDF-"));
+}
