@@ -178,12 +178,14 @@ fn build_xmp_pdfa(title: &str, part: u8) -> String {
              <rdf:Description rdf:about=\"\"\n      \
                xmlns:pdfaid=\"http://www.aiim.org/pdfa/ns/id/\"\n      \
                xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n      \
-               xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\">\n      \
+               xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\"\n      \
+               xmlns:pdf=\"http://ns.adobe.com/pdf/1.3/\">\n      \
                <pdfaid:part>{part}</pdfaid:part>\n      \
                <pdfaid:conformance>B</pdfaid:conformance>\n      \
                <dc:format>application/pdf</dc:format>\n      \
                <dc:title><rdf:Alt><rdf:li xml:lang=\"x-default\">{safe_title}</rdf:li></rdf:Alt></dc:title>\n      \
                <xmp:CreatorTool>normordis-pdf</xmp:CreatorTool>\n      \
+               <pdf:Producer>normordis-pdf</pdf:Producer>\n      \
                <xmp:CreateDate>2026-01-01T00:00:00Z</xmp:CreateDate>\n    \
              </rdf:Description>\n  \
            </rdf:RDF>\n\
@@ -204,7 +206,8 @@ fn build_xmp_pdfa4_ua2(title: &str) -> String {
                xmlns:pdfaid=\"http://www.aiim.org/pdfa/ns/id/\"\n      \
                xmlns:pdfuaid=\"http://www.aiim.org/pdfua/ns/id/\"\n      \
                xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n      \
-               xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\">\n      \
+               xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\"\n      \
+               xmlns:pdf=\"http://ns.adobe.com/pdf/1.3/\">\n      \
                <pdfaid:part>4</pdfaid:part>\n      \
                <pdfaid:conformance>F</pdfaid:conformance>\n      \
                <pdfaid:rev>2020</pdfaid:rev>\n      \
@@ -213,6 +216,7 @@ fn build_xmp_pdfa4_ua2(title: &str) -> String {
                <dc:format>application/pdf</dc:format>\n      \
                <dc:title><rdf:Alt><rdf:li xml:lang=\"x-default\">{safe_title}</rdf:li></rdf:Alt></dc:title>\n      \
                <xmp:CreatorTool>normordis-pdf</xmp:CreatorTool>\n      \
+               <pdf:Producer>normordis-pdf</pdf:Producer>\n      \
                <xmp:CreateDate>2026-01-01T00:00:00Z</xmp:CreateDate>\n    \
              </rdf:Description>\n  \
            </rdf:RDF>\n\
@@ -231,12 +235,14 @@ fn build_xmp_pdfu2(title: &str) -> String {
              <rdf:Description rdf:about=\"\"\n      \
                xmlns:pdfuaid=\"http://www.aiim.org/pdfua/ns/id/\"\n      \
                xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n      \
-               xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\">\n      \
+               xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\"\n      \
+               xmlns:pdf=\"http://ns.adobe.com/pdf/1.3/\">\n      \
                <pdfuaid:part>2</pdfuaid:part>\n      \
                <pdfuaid:rev>2024</pdfuaid:rev>\n      \
                <dc:format>application/pdf</dc:format>\n      \
                <dc:title><rdf:Alt><rdf:li xml:lang=\"x-default\">{safe_title}</rdf:li></rdf:Alt></dc:title>\n      \
                <xmp:CreatorTool>normordis-pdf</xmp:CreatorTool>\n      \
+               <pdf:Producer>normordis-pdf</pdf:Producer>\n      \
                <xmp:CreateDate>2026-01-01T00:00:00Z</xmp:CreateDate>\n    \
              </rdf:Description>\n  \
            </rdf:RDF>\n\
@@ -255,7 +261,7 @@ fn xml_escape(s: &str) -> String {
 /// Deterministic 16-byte file identifier for the PDF trailer /ID array.
 /// Derived from the document title via SHA-256; both IDs are identical
 /// (new and original are the same for a freshly generated file).
-fn pdfu2_file_id(title: &str) -> Vec<u8> {
+fn deterministic_file_id(title: &str) -> Vec<u8> {
     use sha2::{Digest, Sha256};
     let hash = Sha256::digest(title.as_bytes());
     hash[..16].to_vec()
@@ -794,6 +800,20 @@ impl PdfBackend for PdfWriterBackend {
     fn finish(&mut self) -> crate::Result<Vec<u8>> {
         self.flush_current_page()?;
 
+        // PDF/A-1 proíbe transparência (ISO 19005-1 §6.4: ca/CA têm de ser
+        // 1.0). Recusar aqui, em vez de emitir silenciosamente um ficheiro
+        // que declara uma conformidade que não tem — a declaração de
+        // conformidade pode ser usada como evidência.
+        if self.pdfa && self.pdfa_part == 1 && self.opacity_gs.keys().any(|&o| o != 255) {
+            return Err(NormordisPdfError::RenderError(
+                "PDF/A-1 proíbe transparência (ISO 19005-1 §6.4): o documento \
+                 usa opacidade < 1.0, por exemplo numa marca de água \
+                 translúcida. Use opacidade 1.0 nesse conteúdo ou um perfil \
+                 que permita transparência (PDF/A-2b ou superior)."
+                    .into(),
+            ));
+        }
+
         // ── Prepare subsetted font data ────────────────────────────────────────
         struct PreparedFont {
             stream_ref: Ref,
@@ -1216,10 +1236,16 @@ impl PdfBackend for PdfWriterBackend {
 
             let pdf = self.pdf.as_mut().expect("pdf not finished");
 
-            // PDF/UA-2: PDF 2.0 header + trailer file ID (ISO 14289-2 §6.1).
+            // PDF/UA-2: PDF 2.0 header (ISO 14289-2 §6.1).
             if pdfu2 {
                 pdf.set_version(2, 0);
-                let file_id = pdfu2_file_id(&self.title);
+            }
+
+            // Trailer /ID: exigido por PDF/A (ISO 19005-1 §6.1.3) e por
+            // PDF/UA-2 (ISO 14289-2 §6.1). Determinístico — derivado do
+            // título — para preservar reprodutibilidade byte-a-byte.
+            if pdfa || pdfu2 {
+                let file_id = deterministic_file_id(&self.title);
                 pdf.set_file_id((file_id.clone(), file_id));
             }
 
@@ -1227,8 +1253,12 @@ impl PdfBackend for PdfWriterBackend {
             if !(pdfa && pdfa_part >= 4) {
                 let info_ref = self.alloc.bump();
                 let mut info = pdf.document_info(info_ref);
+                info.title(TextStr(&self.title));
                 info.producer(TextStr("normordis-pdf"));
-                info.creator(TextStr(&self.title));
+                // ISO 19005-1 §6.7.3: Creator, se presente, tem de ser
+                // equivalente a xmp:CreatorTool. É a aplicação criadora,
+                // não o título do documento.
+                info.creator(TextStr("normordis-pdf"));
                 info.creation_date(Date::new(2026).month(1).day(1));
                 drop(info);
             }
