@@ -800,6 +800,20 @@ impl PdfBackend for PdfWriterBackend {
     fn finish(&mut self) -> crate::Result<Vec<u8>> {
         self.flush_current_page()?;
 
+        // PDF/A-1 proíbe transparência (ISO 19005-1 §6.4: ca/CA têm de ser
+        // 1.0). Recusar aqui, em vez de emitir silenciosamente um ficheiro
+        // que declara uma conformidade que não tem — a declaração de
+        // conformidade pode ser usada como evidência.
+        if self.pdfa && self.pdfa_part == 1 && self.opacity_gs.keys().any(|&o| o != 255) {
+            return Err(NormordisPdfError::RenderError(
+                "PDF/A-1 proíbe transparência (ISO 19005-1 §6.4): o documento \
+                 usa opacidade < 1.0, por exemplo numa marca de água \
+                 translúcida. Use opacidade 1.0 nesse conteúdo ou um perfil \
+                 que permita transparência (PDF/A-2b ou superior)."
+                    .into(),
+            ));
+        }
+
         // ── Prepare subsetted font data ────────────────────────────────────────
         struct PreparedFont {
             stream_ref: Ref,
