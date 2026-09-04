@@ -34,39 +34,49 @@ fn body_xml(inner: &str) -> String {
 
 #[test]
 fn c1_01_word2016_compat_mode_16() {
-    let mut e = DotxExtractor::default();
-    e.settings_xml = Some(settings_xml("16"));
+    let e = DotxExtractor {
+        settings_xml: Some(settings_xml("16")),
+        ..Default::default()
+    };
     assert_eq!(e.extract_compat_mode(), Some(16));
 }
 
 #[test]
 fn c1_02_word2013_compat_mode_15() {
-    let mut e = DotxExtractor::default();
-    e.settings_xml = Some(settings_xml("15"));
+    let e = DotxExtractor {
+        settings_xml: Some(settings_xml("15")),
+        ..Default::default()
+    };
     assert_eq!(e.extract_compat_mode(), Some(15));
 }
 
 #[test]
 fn c1_03_word2010_compat_mode_14() {
-    let mut e = DotxExtractor::default();
-    e.settings_xml = Some(settings_xml("14"));
+    let e = DotxExtractor {
+        settings_xml: Some(settings_xml("14")),
+        ..Default::default()
+    };
     assert_eq!(e.extract_compat_mode(), Some(14));
 }
 
 #[test]
 fn c1_04_word2007_compat_mode_12() {
-    let mut e = DotxExtractor::default();
-    e.settings_xml = Some(settings_xml("12"));
+    let e = DotxExtractor {
+        settings_xml: Some(settings_xml("12")),
+        ..Default::default()
+    };
     assert_eq!(e.extract_compat_mode(), Some(12));
 }
 
 #[test]
 fn c1_05_no_compat_setting_returns_none() {
-    let mut e = DotxExtractor::default();
-    e.settings_xml = Some(format!(
-        r#"<w:settings {W_NS}><w:compat/></w:settings>"#,
-        W_NS = W_NS
-    ));
+    let e = DotxExtractor {
+        settings_xml: Some(format!(
+            r#"<w:settings {W_NS}><w:compat/></w:settings>"#,
+            W_NS = W_NS
+        )),
+        ..Default::default()
+    };
     assert_eq!(e.extract_compat_mode(), None);
 }
 

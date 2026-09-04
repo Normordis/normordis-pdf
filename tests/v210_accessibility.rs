@@ -328,10 +328,6 @@ fn ua27_validator_none_tree_returns_error() {
 
 // ── 28–30: NDT 2.1.0 ─────────────────────────────────────────────────────────
 
-fn ndt_data() -> &'static str {
-    r#"{"ndt_data":"1.0.0","data":{}}"#
-}
-
 #[test]
 fn ua28_builder_pdfa_ua2_standard_sets_pdfa_ua2() {
     let bytes = DocumentBuilder::new("UA-28")
