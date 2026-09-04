@@ -37,13 +37,54 @@ Origem: achado `R14` de `docs/reports/READINESS-ASSESSMENT.md` no repositório
 `CampoNdf` / `campo_ndf` **mantêm-se**: são construção do NDT 2.0.0 e
 referem-se legitimamente ao NDF da especificação.
 
+### Changed
+
+- `description` do crate e cabeçalho de documentação (`src/lib.rs`)
+  reformulados: deixam de restringir o alvo a administração pública
+  portuguesa e passam a declarar o que a biblioteca garante — conformidade
+  PDF/A, PDF/UA-2 e PAdES — para qualquer setor com obrigações legais de
+  conformidade documental, com a AP como alvo primário
+- README reescrito de raiz (PT + EN), verificado contra o código: tipos
+  inexistentes corrigidos, secções novas sobre conformidade, assinatura
+  PAdES, formatos NORMORDIS, features Cargo e FFI
+- CI: `cargo clippy` passa a correr com `--all-targets`, cobrindo também
+  `tests/`, exemplos e benches (antes só cobria `src/`)
+- `Cargo.toml` `exclude`: `TODO.md`, `REVIEW.md`, `GENPDF_ANALYSIS.md` e
+  `examples/output/*.pdf` deixam de ir no pacote publicado — notas de
+  sessão, um relatório desatualizado e ~1,9 MB de PDFs gerados
+
 ### Fixed
 
 - rótulos de proprietário corrigidos: NCRTF, NDT e NDF são formatos
   **NORMORDIS**, não NORMAXIS (`src/lib.rs`, `tools/ndt-tools`,
-  `tools/dotx2ndt`). As menções ao *framework* NORMAXIS mantêm-se
+  `tools/dotx2ndt`)
+- todas as restantes menções ao *framework* NORMAXIS eliminadas
+  (`MANUAL.md`, `MANUAL.en.md`, doc de `framework_version`, nomes de
+  ficheiro de saída dos exemplos, cabeçalho de demonstração do exemplo 10)
 - versão NDT na documentação do crate corrigida de `v1.3.0` para `v2.0.0`,
   alinhando com `ENGINE_NDT_VERSION`
+- `normordis_pdf.h` (cabeçalho C/FFI) estava incompleto: faltava a
+  declaração de `generate_pdf_from_ndt`, exportada em `src/ffi.rs` mas
+  ausente do header
+- 17 lints de clippy em `tests/` e `tools/dotx2ndt/tests/`, nunca antes
+  verificados porque a CI não corria com `--all-targets`; nenhuma alteração
+  de comportamento
+
+### Added
+
+- `docs/architecture/` — registo cronológico de decisões de arquitetura
+  (`DECISIONS.md`), com as quatro primeiras entradas (ADR-001 a ADR-004)
+  registadas retroativamente a partir de decisões já tomadas e visíveis no
+  histórico
+- `AGENTS.md`, `AI_USAGE.md`, `docs/ai-provenance.md`,
+  `docs/genai-application-disclosure-template.md` — política de utilização
+  de IA generativa e convenção de proveniência em commits, em vigor desde
+  2026-09-04 e sem retroatividade, adotadas em preparação da candidatura ao
+  NGI Zero (NLnet)
+
+### Removed
+
+- ficheiro `TODO` (checklist de junho, obsoleta, superada por `TODO.md`)
 
 ### Nota
 
