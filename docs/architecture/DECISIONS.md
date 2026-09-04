@@ -182,3 +182,24 @@ candidatura NLnet/Restack (infraestrutura partilhada, não motor
 fechado) — decisão de âmbito da candidatura fica para essa altura. Se
 concluir por rejeição, a branch `spike/krilla` é arquivada com os
 números medidos, para a avaliação não se repetir sem informação nova.
+
+### Atualização — 2026-09-04
+Esclarecimento de contexto que faltava na entrada original: o
+`normordis-pdf` **já produz PDF/UA-2 conforme com o motor próprio**,
+verificado pelo veraPDF na CI (exemplo `13_accessibility`, check
+"Validate PDF/UA-2") independentemente desta decisão. A UA-2 nunca foi
+uma lacuna de produto que o krilla resolveria — a pergunta 1 do plano
+de spike, respondida (PDF/A-4f via krilla passa veraPDF, 109 regras,
+208 verificações, confirmado localmente e em CI), é sobre consolidação
+de motor (menos código próprio, PDF/A-4 nativo), não sobre obter UA-2.
+
+A oportunidade de contribuir PDF/UA-2 ao krilla upstream mantém-se, com
+âmbito reposicionado: entra no roteiro do projeto como **trabalho
+futuro**, não como pré-requisito da candidatura nem como spike a
+concluir antes da submissão. O seu valor para a candidatura é
+sobretudo o critério de impacto (infraestrutura partilhada com outros
+consumidores do krilla, incluindo o Typst) — não o critério técnico,
+que a UA-2 do motor próprio já demonstra por si. Decisão do
+responsável: mantém-se no roteiro do projeto e é referida na
+candidatura como trabalho futuro; não é executada nem estimada em
+detalhe antes da submissão.
