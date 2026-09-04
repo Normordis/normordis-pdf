@@ -1,4 +1,4 @@
-use normordis_pdf::{DocumentBuilder, FontFamily, FontRegistry};
+use normordis_pdf::{FontFamily, FontRegistry};
 
 #[test]
 fn default_registry_does_not_panic() {

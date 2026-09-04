@@ -550,7 +550,7 @@ impl SecurityClassification {
 pub struct TraceabilityMetadata {
     /// normordis-pdf version that generated this document.
     pub engine_version: String,
-    /// NORMAXIS framework version.
+    /// Version of the calling application or framework, if any.
     pub framework_version: Option<String>,
     /// Generating entity identifier (e.g. `"cm-lisboa"`).
     pub entity_id: String,

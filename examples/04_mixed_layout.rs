@@ -65,7 +65,7 @@ fn main() -> Result<()> {
         )
         .render_to_bytes()?;
 
-    let out = std::env::temp_dir().join("normaxis_mixed.pdf");
+    let out = std::env::temp_dir().join("normordis_mixed.pdf");
     std::fs::write(&out, &pdf)?;
     println!("PDF gerado: {} ({} bytes)", out.display(), pdf.len());
     Ok(())
