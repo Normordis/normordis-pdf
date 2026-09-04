@@ -129,3 +129,56 @@ Cada commit assistido passa a exigir revisão humana registada. Testes de
 conformidade não são escritos na sessão que implementou o código testado.
 Este registo de decisões passa a ser obrigatório para decisões de
 arquitetura, formato, norma e dependência.
+
+---
+
+## ADR-005 — Spike krilla como possível motor de conformidade PDF/A + PDF/UA
+
+- **Data:** 2026-09-04
+- **Estado:** proposta
+- **Decisão de:** Carlos Canuto Costa
+- **Proposta por:** agente (Claude Sonnet 5, Claude Code), a partir de verificação direta do código-fonte do krilla em sessão anterior
+- **Origem:** pedido do responsável ("Vamos decidir sobre o spike krilla, no próprio repo e registar o ADR"); ADR-003 previa ADR próprio para decisões de dependência resultantes da migração de formatos
+
+### Contexto
+`normordis-pdf` produz PDF/A e PDF/UA-2 com motor próprio
+(pdf-writer + subsetter + rustybuzz). `krilla` 0.8.2 é uma crate Rust de
+alto nível para geração de PDF que reivindica cobertura PDF/A completa
+(A1–A4, incl. A4F/A4E) e *tagging*. Verificação direta do código-fonte
+(`crates/krilla/src/configure/validate.rs`) mostra que o krilla cobre
+apenas **PDF/UA-1** — zero ocorrências de `UA2`/`14289-2` — enquanto
+PDF/UA-2 (ISO 14289-2:2024) é o diferenciador central do
+`normordis-pdf` e a alegação que a CI valida por veraPDF.
+
+O responsável fixou o critério orientador: o produto tem de cumprir os
+requisitos legais da AP e acompanhar a dinâmica legislativa, devendo
+ficar o mais independente possível de terceiros no caminho crítico de
+conformidade. Isto inverte o ónus da prova: o krilla só é adotado se o
+spike demonstrar ganho que compense a dependência — não por omissão.
+
+### Decisão
+Correr um spike em branch própria no repositório `normordis-pdf`
+(`spike/krilla`), não em fork, para **medir**, não assumir, se e como o
+krilla poderia substituir ou complementar o motor atual. Plano de
+medição em `docs/architecture/spike-krilla-plano.md`. Esta entrada não
+decide adoção; decide apenas correr o spike e como o correr. A decisão
+de adoção ou rejeição entra como ADR próprio (`aceite` ou `rejeitada`)
+quando houver resultados.
+
+### Alternativas rejeitadas
+Fork do `normordis-pdf`: fragmentaria o histórico e dificultaria
+comparar sob as mesmas condições de CI/veraPDF. Adotar sem spike: o
+motor cobre só UA-1 e adotá-lo sem medir seria regressão não
+verificada no diferenciador do projeto. Não avaliar: o
+`normordis-kernel` já usa krilla transitivamente via `render-typst`,
+ignorar essa sobreposição desperdiça informação já disponível no
+ecossistema NORMORDIS.
+
+### Consequências
+Nenhuma alteração de código de produção até haver resultados. Se o
+spike concluir por adoção (parcial ou total), contribuir PDF/UA-2
+upstream ao krilla é o entregável identificado como mais forte para a
+candidatura NLnet/Restack (infraestrutura partilhada, não motor
+fechado) — decisão de âmbito da candidatura fica para essa altura. Se
+concluir por rejeição, a branch `spike/krilla` é arquivada com os
+números medidos, para a avaliação não se repetir sem informação nova.

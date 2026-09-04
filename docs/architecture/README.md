@@ -8,6 +8,7 @@ o sistema faz; este diretório diz *porquê* e *quem decidiu*.
 | Ficheiro | Função |
 |---|---|
 | `DECISIONS.md` | Registo cronológico de decisões de arquitetura, formato, norma aplicável e dependência. Uma entrada por decisão. |
+| `spike-krilla-plano.md` | Plano de medição do ADR-005 — perguntas, critérios de saída e estado do spike krilla. |
 
 Documentos de arquitetura mais longos (diagramas, análises de alternativas,
 planos de migração) entram aqui como ficheiros próprios e são referenciados
