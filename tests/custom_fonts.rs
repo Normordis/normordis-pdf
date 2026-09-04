@@ -186,8 +186,10 @@ fn cf_24_default_fallback_chain_has_liberation_families() {
 #[test]
 fn cf_25_unknown_font_uses_fallback_chain() {
     // Load a style with a custom fallback chain that points to LiberationSerif.
-    let mut style = DocumentStyle::default();
-    style.font_fallback = FontFallbackChain::new(vec!["LiberationSerif"]);
+    let style = DocumentStyle {
+        font_fallback: FontFallbackChain::new(vec!["LiberationSerif"]),
+        ..Default::default()
+    };
 
     let pdf = DocumentBuilder::new("Test")
         .style(style)
@@ -198,8 +200,10 @@ fn cf_25_unknown_font_uses_fallback_chain() {
 
 #[test]
 fn cf_26_empty_fallback_chain_uses_default() {
-    let mut style = DocumentStyle::default();
-    style.font_fallback = FontFallbackChain::default(); // empty
+    let style = DocumentStyle {
+        font_fallback: FontFallbackChain::default(), // empty
+        ..Default::default()
+    };
 
     let pdf = DocumentBuilder::new("Test")
         .style(style)

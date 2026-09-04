@@ -531,16 +531,16 @@ fn fmt_35_link_inline_deserializes() {
 
 #[test]
 fn fmt_36_soft_hyphen_preserved_in_text_node() {
-    let json = r#"{"ncrtf_version":"2.0.0","content":[{"type":"paragraph","content":[{"type":"text","text":"im­ple­men­ta­ção"}]}]}"#;
+    let json = r#"{"ncrtf_version":"2.0.0","content":[{"type":"paragraph","content":[{"type":"text","text":"im\u00adple\u00admen\u00adta\u00adção"}]}]}"#;
     let doc = parse_ncrtf(json).unwrap();
     use normordis_pdf::richtext::model::{Block, Inline};
-    if let Block::Paragraph(p) = &doc.content[0] {
-        if let Inline::Text(t) = &p.content[0] {
-            assert!(
-                t.text.contains('\u{00AD}'),
-                "soft hyphen U+00AD must be preserved"
-            );
-        }
+    if let Block::Paragraph(p) = &doc.content[0]
+        && let Inline::Text(t) = &p.content[0]
+    {
+        assert!(
+            t.text.contains('\u{00AD}'),
+            "soft hyphen U+00AD must be preserved"
+        );
     }
 }
 
