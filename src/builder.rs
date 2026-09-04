@@ -214,8 +214,10 @@ impl DocumentBuilder {
 
     /// Set the PDF conformance standard.
     ///
-    /// Use [`PdfStandard::PdfA1b`] for long-term archival (ISO 19005-1).
-    /// [`PdfStandard::Pdf17`] is the default (no conformance requirements).
+    /// The default is [`PdfStandard::PdfA4Ua2`] (PDF/A-4f + PDF/UA-2). Use
+    /// [`PdfStandard::PdfA1b`] / [`PdfStandard::PdfA2b`] when a consumer
+    /// requires those parts, and [`PdfStandard::Pdf17`] to opt out of
+    /// conformance altogether.
     pub fn standard(mut self, s: PdfStandard) -> Self {
         self.standard = s;
         self

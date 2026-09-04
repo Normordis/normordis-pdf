@@ -2,7 +2,7 @@
 name = "ndt-tools"
 version = "0.1.0"
 edition.workspace = true
-description = "CLI tools for working with NDT (NORMAXIS Document Template) files"
+description = "CLI tools for working with NDT (NORMORDIS Document Template) files"
 license = "EUPL-1.2"
 
 [[bin]]
