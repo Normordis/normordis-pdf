@@ -124,3 +124,18 @@ jobs:
         run: |
           target/debug/verify-pdf /tmp/normordis_accessible.pdf \
             --ua-only
+
+      # ── Spike ADR-005 (docs/architecture/DECISIONS.md) ────────────────
+      # Existe só na branch spike/krilla. Mede a pergunta 1 do plano em
+      # docs/architecture/spike-krilla-plano.md: um PDF/A-4f gerado com
+      # krilla passa veraPDF? Não faz parte da API pública nem do CI de
+      # main — remover estes dois passos (e tools/spike-krilla) se o
+      # spike terminar em rejeição.
+      - name: Generate PDF/A-4f via krilla  [ADR-005 spike]
+        run: cargo run --package spike-krilla
+
+      - name: Validate PDF/A-4f (krilla spike)  [ADR-005]
+        run: |
+          target/debug/verify-pdf /tmp/spike_krilla_a4f.pdf \
+            --flavour 4f \
+            --pdfa-only
