@@ -1,9 +1,10 @@
 //! # normordis-pdf
 //!
-//! Institutional PDF generation library for NORMAXIS mini-apps.
+//! Compliance-grade institutional PDF generation (PDF/A, PDF/UA-2, PAdES) —
+//! reference implementation of the NORMORDIS formats.
 //!
-//! Generates professional PDF documents for Portuguese public administration,
-//! with support for:
+//! Generates documents that meet the legal conformance requirements of public
+//! administration and other regulated sectors, with support for:
 //! - Flow and Fixed Box layout modes
 //! - NORMORDIS Canonical Rich Text Format (NCRTF)
 //! - NORMORDIS Document Template format (NDT v2.0.0)
