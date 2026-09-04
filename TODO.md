@@ -1,6 +1,6 @@
 # normordis-pdf — Sessão seguinte
 
-> Contexto para Claude retomar sem re-leitura do histórico.
+> Contexto para retomar sem re-leitura do histórico.
 
 ---
 
@@ -130,15 +130,38 @@ absoluta, `fluxo` com paginação por overflow, `graficos`, `mobilia`
 **Nota de honestidade documental:** o README anuncia suporte NDT. Enquanto
 este item não fechar, essa afirmação está à frente do código.
 
-### 4. Clippy pre-existente (baixa prioridade)
+### 3c. veraPDF CI — o perfil por omissão (PDF/A-4f) não é validado (média prioridade)
 
-`cargo clippy --workspace -- -D warnings` tem ~40 erros em ficheiros que **não foram tocados hoje**:
-- `src/layout/knuth_plass.rs:5` — empty line after doc comment
-- `src/backend/pdf_writer_backend.rs` — useless-conversion, too-many-arguments
-- `src/elements/toc.rs` — collapsible-if, repeat().take()
-- Vários outros — explicit lifetimes, map_or, etc.
+**Ficheiro:** `.github/workflows/verapdf.yml`
 
-Estes **existiam antes das sessões de hoje** e não são regressões. Devem ser tratados numa PR separada.
+`PdfStandard::default()` é `PdfA4Ua2` (PDF/A-4f + PDF/UA-2): é o que sai de
+qualquer `DocumentBuilder` sem `.standard(...)`. A CI valida com o veraPDF
+apenas `--flavour 1b`, `2b` e `ua2` — ou seja, os perfis que o utilizador tem
+de pedir explicitamente são verificados por validador independente, e o
+perfil que sai por omissão **não é**. A afirmação central do projeto está por
+isso demonstrada para os perfis secundários e apenas afirmada para o
+principal. Registado com esta franqueza no README (2026-09-04).
+
+**O que fazer:**
+1. Gerar na CI um documento com o standard por omissão (um exemplo novo ou
+   um terceiro output do `12_compliance`) e validá-lo com `--flavour 4f`
+   (o `tools/verify-pdf` já assume A-4f + UA-2 como alvo).
+2. Validar o mesmo ficheiro também com `--flavour ua2`, porque `PdfA4Ua2`
+   reivindica as duas conformidades em simultâneo.
+3. Só depois retirar do README a frase "a validação independente do perfil
+   PDF/A-4f está pendente".
+
+Nota: o veraPDF 1.30.x suporta `4`, `4f` e `4e`; confirmar a flag exata
+contra a versão fixada no workflow.
+
+### 4. Clippy pre-existente — RESOLVIDO (2026-09-04)
+
+Os ~40 erros anotados aqui em junho foram fechados entretanto. Restavam 5
+`field_reassign_with_default` em `tools/dotx2ndt/tests/dotx2ndt_141.rs` que a
+CI não via porque corria `cargo clippy --workspace` sem `--all-targets` —
+lints em código de teste acumulavam-se sem ninguém reparar. Corrigidos os 5
+pontos e a CI passou a `--workspace --all-targets`, cobrindo testes, exemplos
+e benches.
 
 ---
 

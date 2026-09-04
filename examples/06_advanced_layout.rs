@@ -119,7 +119,7 @@ fn main() -> Result<()> {
         ))
         .render_to_bytes()?;
 
-    let out_path = std::env::temp_dir().join("normaxis_advanced.pdf");
+    let out_path = std::env::temp_dir().join("normordis_advanced.pdf");
     std::fs::write(&out_path, &pdf)?;
     println!("PDF gerado: {} ({} bytes)", out_path.display(), pdf.len());
 
