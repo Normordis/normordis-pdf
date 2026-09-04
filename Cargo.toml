@@ -10,7 +10,7 @@ resolver = "2"
 [workspace.package]
 edition = "2024"
 license = "EUPL-1.2"
-version = "4.0.0"
+version = "3.0.0"
 authors = ["Carlos Canuto Costa"]
 
 [workspace.dependencies]
@@ -26,11 +26,11 @@ base64 = "0.22"
 
 [package]
 name = "normordis-pdf"
-version = "4.0.0"
+version = "3.0.0"
 edition.workspace = true
 license = "EUPL-1.2"
 authors.workspace = true
-description = "Institutional PDF generation for Portuguese public administration"
+description = "Compliance-grade institutional PDF (PDF/A, PDF/UA-2, PAdES) — NORMORDIS reference implementation"
 repository = "https://github.com/Normordis/normordis-pdf"
 keywords = ["pdf", "institutional", "portugal", "public-admin", "normaxis"]
 categories = ["rendering", "template-engine"]

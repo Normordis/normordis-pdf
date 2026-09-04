@@ -6,7 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) — versions fo
 
 ---
 
-## [4.0.0] — Não publicado
+## [3.0.0] — 2026-09-04
 
 ### Changed — BREAKING
 
@@ -51,7 +51,30 @@ O renderizador de layout posicionado do NDT 2.0.0 continua por implementar
 (`template::renderer::render_template` devolve erro). Ver achados `R8` e `R15`
 em `normordis-formats`.
 
+Esta é a **última versão em que a crate define os formatos por si própria**.
+A partir da 4.0.0 o `normordis-pdf` passa a tratar as especificações NDF, NDT
+e NCRTF publicadas em `normordis-formats` como referência exclusiva, validando
+contra os schemas normativos aí publicados — ver `docs/architecture/`.
+
 ---
+
+## [2.5.1] — 2026-05-14
+
+> Entrada registada retroativamente em 2026-09-04: a versão foi publicada em
+> crates.io sem entrada no changelog e sem tag git (`v2.5.1` criada sobre o
+> commit `0a7a415`). Os nomes abaixo são os desta versão; a 3.0.0 renomeia-os
+> para o prefixo `Archive*`.
+
+### Added
+
+- **Registo de documentos NDF** — `NdfRegistry`, `NdfRecord`,
+  `NdfRecordStatus` (`active` / `superseded` / `archived`),
+  `NdfRecordSummary` e `NdfFilter`: persistência e consulta de arquivos com
+  hash SHA-256 do conteúdo.
+- **Arquivo NDF autocontido** — `NdfEmbeddedFont` e as variantes
+  `render_ndf_with_fonts` / `render_ndf_prepared_for_signing_with_fonts`: o
+  arquivo transporta as fontes de que depende, para renderização reproduzível
+  fora da máquina de origem.
 
 ## [2.5.0] — 2026-05-14
 
