@@ -41,7 +41,7 @@ fn main() -> normordis_pdf::Result<()> {
 
     let pdf = builder
         .style(style)
-        .header(InstitutionalHeader::new("NORMAXIS", "Demonstração v1.5.0"))
+        .header(InstitutionalHeader::new("NORMORDIS", "Demonstração v1.5.0"))
         .footer(PageFooter::new().right("{{page}} / {{total_pages}}"))
         // ── TOC ───────────────────────────────────────────────────────
         .push(
@@ -152,7 +152,7 @@ fn main() -> normordis_pdf::Result<()> {
         }))
         .render_to_bytes()?;
 
-    let out = std::env::temp_dir().join("normaxis_advanced_elements.pdf");
+    let out = std::env::temp_dir().join("normordis_advanced_elements.pdf");
     std::fs::write(&out, &pdf)?;
     println!("PDF gerado: {} ({} bytes)", out.display(), pdf.len());
     println!("Verificar visualmente:");

@@ -108,7 +108,7 @@ fn main() -> Result<()> {
         ))
         .render_to_bytes()?;
 
-    let path_o = out_dir.join("normaxis_opacity.pdf");
+    let path_o = out_dir.join("normordis_opacity.pdf");
     std::fs::write(&path_o, &pdf_opacity)?;
     println!(
         "Opacidade real: {} ({} KB)",

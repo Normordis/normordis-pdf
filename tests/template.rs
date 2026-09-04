@@ -1,6 +1,5 @@
 use normordis_pdf::{
-    DocumentBuilder, DocumentStyle, parse_ndt, parse_ndt_data, serialize_ndt_json,
-    serialize_ndt_toml,
+    DocumentBuilder, parse_ndt, parse_ndt_data, serialize_ndt_json, serialize_ndt_toml,
     template::{TemplateError, check_version_compatibility},
 };
 

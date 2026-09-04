@@ -88,7 +88,7 @@ fn main() -> Result<()> {
         )
         .render_to_bytes()?;
 
-    let out_path = out_dir.join("normaxis_accessible.pdf");
+    let out_path = out_dir.join("normordis_accessible.pdf");
     std::fs::write(&out_path, &pdf)?;
 
     println!("PDF/UA-2: {} ({} KB)", out_path.display(), pdf.len() / 1024);

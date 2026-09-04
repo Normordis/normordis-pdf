@@ -118,7 +118,7 @@ fn main() -> Result<()> {
         )
         .render_to_bytes()?;
 
-    let out = std::env::temp_dir().join("normaxis_fidelity_v110.pdf");
+    let out = std::env::temp_dir().join("normordis_fidelity_v110.pdf");
     std::fs::write(&out, &pdf)?;
     println!("PDF v1.1.0 gerado: {} ({} bytes)", out.display(), pdf.len());
     assert!(pdf.starts_with(b"%PDF"), "output must be a PDF file");

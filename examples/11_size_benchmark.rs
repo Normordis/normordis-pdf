@@ -44,7 +44,7 @@ fn build_document(compression: CompressionLevel) -> normordis_pdf::Result<Vec<u8
                 .row(vec![TableCell::new("Versão"), TableCell::new("1.5.1")])
                 .row(vec![
                     TableCell::new("Compressão"),
-                    TableCell::new(&format!("{compression:?}")),
+                    TableCell::new(format!("{compression:?}")),
                 ])
                 .build(),
         )
@@ -90,7 +90,7 @@ fn main() -> normordis_pdf::Result<()> {
     let out_dir = std::env::temp_dir();
     for (label, _size, bytes) in &results {
         let suffix = label.split(' ').next().unwrap_or("out").to_lowercase();
-        let path = out_dir.join(format!("normaxis_bench_{suffix}.pdf"));
+        let path = out_dir.join(format!("normordis_bench_{suffix}.pdf"));
         std::fs::write(&path, bytes)?;
         println!("Guardado: {} ({} KB)", path.display(), bytes.len() / 1024);
     }

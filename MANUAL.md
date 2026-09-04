@@ -132,7 +132,7 @@ RgbColor::from_hex("003399")           // sem o '#' também funciona
 
 ### `TextAlignment`
 
-NORMAXIS suporta exactamente três alinhamentos:
+`normordis-pdf` suporta exactamente três alinhamentos:
 
 ```rust
 TextAlignment::Left     // padrão para corpo, listas, células de tabela
@@ -548,7 +548,7 @@ let pdf = DocumentBuilder::new("Certidão de Residência")
 
 ## 6. Formato NCRTF
 
-NCRTF (*Normaxis Canonical Rich Text Format*) é o formato JSON interno para rich text editável. O `DocumentBuilder::push_ncrtf()` parseia o JSON e converte automaticamente para elementos.
+NCRTF (*NORMORDIS Canonical Rich Text Format*) é o formato JSON interno para rich text editável. O `DocumentBuilder::push_ncrtf()` parseia o JSON e converte automaticamente para elementos.
 
 ### Estrutura de topo
 
@@ -825,21 +825,21 @@ normordis-pdf = { version = "...", features = ["system-fonts"] }
 
 ## 8. Tratamento de erros
 
-Todos os métodos que podem falhar devolvem `normordis_pdf::Result<T>`, alias para `Result<T, NormaxisPdfError>`.
+Todos os métodos que podem falhar devolvem `normordis_pdf::Result<T>`, alias para `Result<T, NormordisPdfError>`.
 
 ```rust
-use normordis_pdf::NormaxisPdfError;
+use normordis_pdf::NormordisPdfError;
 
 match builder.render_to_bytes() {
     Ok(bytes) => { /* ... */ }
-    Err(NormaxisPdfError::ParseError(msg)) => eprintln!("JSON inválido: {msg}"),
-    Err(NormaxisPdfError::RenderError(msg)) => eprintln!("Falha de renderização: {msg}"),
-    Err(NormaxisPdfError::IoError(e)) => eprintln!("Erro de I/O: {e}"),
+    Err(NormordisPdfError::ParseError(msg)) => eprintln!("JSON inválido: {msg}"),
+    Err(NormordisPdfError::RenderError(msg)) => eprintln!("Falha de renderização: {msg}"),
+    Err(NormordisPdfError::IoError(e)) => eprintln!("Erro de I/O: {e}"),
     Err(e) => eprintln!("Erro: {e}"),
 }
 ```
 
-**Variantes de `NormaxisPdfError`:**
+**Variantes de `NormordisPdfError`:**
 
 | Variante | Causa |
 |---|---|

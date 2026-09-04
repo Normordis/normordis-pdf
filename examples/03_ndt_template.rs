@@ -23,7 +23,7 @@ fn main() -> Result<()> {
         .push_ndt(TEMPLATE, &data)?
         .render_to_bytes()?;
 
-    let out = std::env::temp_dir().join("normaxis_ndt.pdf");
+    let out = std::env::temp_dir().join("normordis_ndt.pdf");
     std::fs::write(&out, &pdf)?;
     println!("PDF gerado: {} ({} bytes)", out.display(), pdf.len());
     Ok(())
