@@ -50,9 +50,10 @@ e instalação documentada em `.github/workflows/verapdf.yml`):
 PDF/A-4F → PASSOU  (109 regras, 208 verificações)
 ```
 
-CI (`spike: PDF/A-4f via krilla`, branch `spike/krilla`) reproduz esta
-validação de forma independente da máquina onde foi medida pela primeira
-vez — ver resultado no PR do spike antes de dar a pergunta por fechada.
+**Confirmado de forma independente na CI** (PR #8, GitHub-hosted runner,
+run `33875467029`): mesmo resultado exato — `PDF/A-4F → PASSOU (109
+regras, 208 verificações)`. Pergunta 1 fechada com dois pontos de
+medição concordantes, não uma afirmação isolada.
 
 Nota lateral, não parte da pergunta 1: adicionar krilla ao workspace
 atualizou `subsetter` de 0.2.3 para 0.2.6 no `Cargo.lock` partilhado
@@ -60,4 +61,28 @@ atualizou `subsetter` de 0.2.3 para 0.2.6 no `Cargo.lock` partilhado
 sem efeito no motor atual, mas registado porque um workspace partilhado
 significa que a dependência do spike já toca o lockfile de produção.
 
-Perguntas 2–5: por responder.
+**Pergunta 4 — reenquadrada em 2026-09-04, deixa de condicionar o
+spike.** Verificação adicional (independente da pergunta 1): o
+`normordis-pdf` já produz PDF/UA-2 conforme com o motor próprio,
+validado pelo veraPDF na CI (exemplo `13_accessibility`). A UA-2 nunca
+foi uma lacuna de produto que o krilla resolveria — ver a adenda
+"Atualização — 2026-09-04" ao ADR-005 em
+[DECISIONS.md](DECISIONS.md). Consequência para este plano: o critério
+de saída "vale a pena aprofundar se o custo de UA-2 upstream for
+inferior ao do motor próprio" deixa de fazer sentido tal como estava
+formulado — não há troca a fazer, porque o motor próprio já cumpre.
+A contribuição upstream mantém-se no roteiro do projeto como trabalho
+futuro (critério de impacto para a candidatura NLnet/Restack), sem
+estimativa de esforço nem execução agora. A pergunta 4 fica **por
+responder, sem prazo**.
+
+**Perguntas 2, 3 e 5 — por responder, sem urgência identificada.** Não
+têm ligação direta à candidatura (essa ligação, via a pergunta 4, foi
+desfeita pelo reenquadramento acima); continuam relevantes para a
+saúde do motor a prazo, mas sem prazo fixado.
+
+**Spike em pausa a partir de 2026-09-04**, por decisão do responsável:
+a questão que motivou a urgência (UA-2 valorizar ou não a candidatura)
+está resolvida e registada; retomar quando houver motivação própria
+para decidir consolidação de motor, não por pressão de calendário da
+candidatura.
