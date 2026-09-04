@@ -36,7 +36,7 @@ keywords = ["pdf", "institutional", "portugal", "public-admin", "normordis"]
 categories = ["rendering", "template-engine"]
 readme = "README.md"
 documentation = "https://docs.rs/normordis-pdf"
-exclude = ["examples/templates/*.pdf"]
+exclude = ["examples/templates/*.pdf", "examples/output/*.pdf", "TODO.md"]
 
 [lib]
 crate-type = ["lib", "cdylib"]

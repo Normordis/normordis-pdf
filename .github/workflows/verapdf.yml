@@ -122,5 +122,5 @@ jobs:
       # Validate PDF/UA-2.  The -f ua2 flag requires veraPDF 1.30+.
       - name: Validate PDF/UA-2
         run: |
-          target/debug/verify-pdf /tmp/normaxis_accessible.pdf \
+          target/debug/verify-pdf /tmp/normordis_accessible.pdf \
             --ua-only
