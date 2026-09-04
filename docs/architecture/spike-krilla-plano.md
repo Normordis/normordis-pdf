@@ -37,4 +37,27 @@ verdade dos formatos NDF/NDT/NCRTF.
 
 ## Estado
 
-Por iniciar — branch `spike/krilla` criada, sem código ainda.
+**Pergunta 1 — respondida em 2026-09-04, PASSOU.**
+`tools/spike-krilla` gera um documento mínimo (uma página, um `draw_text`)
+com `krilla::configure::{ConfigurationBuilder, Archival::A4F}` — API
+confirmada por leitura direta de
+`crates/krilla/src/configure/{mod,validate}.rs` no repositório do krilla,
+não por documentação de segunda mão. Validado localmente com
+`tools/verify-pdf --flavour 4f --pdfa-only`, veraPDF 1.30.2 (mesma versão
+e instalação documentada em `.github/workflows/verapdf.yml`):
+
+```
+PDF/A-4F → PASSOU  (109 regras, 208 verificações)
+```
+
+CI (`spike: PDF/A-4f via krilla`, branch `spike/krilla`) reproduz esta
+validação de forma independente da máquina onde foi medida pela primeira
+vez — ver resultado no PR do spike antes de dar a pergunta por fechada.
+
+Nota lateral, não parte da pergunta 1: adicionar krilla ao workspace
+atualizou `subsetter` de 0.2.3 para 0.2.6 no `Cargo.lock` partilhado
+(dependência também usada pelo motor atual, mesma faixa semver `0.2`) —
+sem efeito no motor atual, mas registado porque um workspace partilhado
+significa que a dependência do spike já toca o lockfile de produção.
+
+Perguntas 2–5: por responder.

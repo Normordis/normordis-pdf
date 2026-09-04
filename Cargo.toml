@@ -4,6 +4,7 @@ members = [
     "tools/dotx2ndt",
     "tools/ndt-tools",
     "tools/verify-pdf",
+    "tools/spike-krilla",
 ]
 resolver = "2"
 
