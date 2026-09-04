@@ -5,7 +5,6 @@
 /.claude
 /.codex
 /.agents
-AGENTS.md
 
 # Segredos e material criptográfico local — nunca devem ser publicados.
 # Use ficheiros `.example` sem valores reais para documentar configuração.
