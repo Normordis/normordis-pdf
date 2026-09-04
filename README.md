@@ -18,6 +18,8 @@ Este repositório contém a crate `normordis-pdf` e três ferramentas auxiliares
 
 **Documentação** · [MANUAL.md](MANUAL.md) (pt-PT) · [MANUAL.en.md](MANUAL.en.md) · [docs/man/ncrtf.md](docs/man/ncrtf.md) · [CHANGELOG.md](CHANGELOG.md) · [SECURITY.md](SECURITY.md) · [scripts/README.md](scripts/README.md)
 
+**Arquitetura e proveniência** · [docs/architecture/](docs/architecture/) (decisões) · [AGENTS.md](AGENTS.md) · [AI_USAGE.md](AI_USAGE.md)
+
 ---
 
 ## Português (pt-PT)
