@@ -1,0 +1,14 @@
+[package]
+name = "spike-krilla"
+version = "0.0.0"
+edition = "2024"
+description = "Spike ADR-005: medir krilla 0.8.2 como possível motor de conformidade PDF/A-4f. Não é API pública nem é publicado."
+license = "EUPL-1.2"
+publish = false
+
+[[bin]]
+name = "spike-krilla"
+path = "src/main.rs"
+
+[dependencies]
+krilla = "0.8.2"
