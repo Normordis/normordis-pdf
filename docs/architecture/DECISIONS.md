@@ -203,3 +203,13 @@ que a UA-2 do motor próprio já demonstra por si. Decisão do
 responsável: mantém-se no roteiro do projeto e é referida na
 candidatura como trabalho futuro; não é executada nem estimada em
 detalhe antes da submissão.
+
+**Nota de âmbito, para evitar leitura errada:** o resultado da
+pergunta 1 (`PdfA4Ua2` via krilla passa veraPDF) valida apenas o
+spike, correndo em `spike/krilla`. Não valida, e não deve ser lido
+como validando, a saída `PdfStandard::PdfA4Ua2` do motor de produção
+(`pdf-writer`) publicado na 3.0.0 — esse continua sem validação
+independente do perfil PDF/A-4f, conforme já indicado no README
+("Independent validation of the PDF/A-4f profile is pending"). Os dois
+motores são código distinto; um resultado positivo no krilla não é
+evidência sobre o comportamento do `pdf-writer`.
