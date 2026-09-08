@@ -15,8 +15,15 @@ use crate::{DocumentBuilder, NormordisPdfError};
 /// }
 /// Retorna um ponteiro para os bytes do PDF (alocado com malloc).
 /// O chamador deve liberar com `free_pdf_result`.
+///
+/// # Safety
+/// `json_config` deve ser nulo ou apontar para uma C-string válida,
+/// terminada em NUL, legível durante a chamada (contrato normal de
+/// `CStr::from_ptr`). O ponteiro devolvido, quando não nulo, só deve ser
+/// libertado com `free_pdf_result` — nunca com `free()`/`delete` do lado
+/// chamador, nem mais do que uma vez.
 #[unsafe(no_mangle)]
-pub extern "C" fn generate_pdf_from_json(json_config: *const c_char) -> *mut PdfResult {
+pub unsafe extern "C" fn generate_pdf_from_json(json_config: *const c_char) -> *mut PdfResult {
     if json_config.is_null() {
         return ptr::null_mut();
     }
@@ -40,9 +47,17 @@ pub extern "C" fn generate_pdf_from_json(json_config: *const c_char) -> *mut Pdf
     Box::into_raw(result)
 }
 
-/// Libera a memória alocada por `generate_pdf_from_json`.
+/// Liberta a memória alocada por `generate_pdf_from_json` ou
+/// `generate_pdf_from_ndt`.
+///
+/// # Safety
+/// `result` deve ser nulo ou um ponteiro devolvido por uma dessas duas
+/// funções desta mesma crate, ainda não libertado. Chamar duas vezes com
+/// o mesmo ponteiro (double free), ou passar um ponteiro de outra
+/// origem, é comportamento indefinido. O ponteiro não deve ser usado
+/// depois desta chamada.
 #[unsafe(no_mangle)]
-pub extern "C" fn free_pdf_result(result: *mut PdfResult) {
+pub unsafe extern "C" fn free_pdf_result(result: *mut PdfResult) {
     if !result.is_null() {
         unsafe { drop(Box::from_raw(result)) };
     }
@@ -63,8 +78,14 @@ pub struct PdfResult {
 ///
 /// Returns a `PdfResult` pointer on success, or null on error.
 /// The caller must free with `free_pdf_result`.
+///
+/// # Safety
+/// `ndt_json` e `data_json` devem ser nulos ou apontar cada um para uma
+/// C-string válida, terminada em NUL, legível durante a chamada. O
+/// ponteiro devolvido, quando não nulo, só deve ser libertado com
+/// `free_pdf_result`.
 #[unsafe(no_mangle)]
-pub extern "C" fn generate_pdf_from_ndt(
+pub unsafe extern "C" fn generate_pdf_from_ndt(
     ndt_json: *const c_char,
     data_json: *const c_char,
 ) -> *mut PdfResult {
