@@ -10,6 +10,14 @@ resolver = "2"
 
 [workspace.package]
 edition = "2024"
+# Piso real, não teórico: apurado pelo job "msrv" do CI, que instala este
+# toolchain exato e falha se algo o exigir mais alto. 1.85 (piso da edition
+# 2024) estava errado — a própria crate usa let-chains ("if ... && let ...",
+# https://github.com/rust-lang/rust/issues/139951), estável só desde 1.88.0,
+# em 9 ficheiros; dependências transitivas (image, icu_*) também já pedem
+# 1.86–1.88. Não descer sem antes reescrever os let-chains e confirmar as
+# dependências — ver docs/architecture/DECISIONS.md.
+rust-version = "1.88"
 license = "EUPL-1.2"
 version = "3.0.0"
 authors = ["Carlos Canuto Costa"]
@@ -29,6 +37,7 @@ base64 = "0.22"
 name = "normordis-pdf"
 version = "3.0.0"
 edition.workspace = true
+rust-version.workspace = true
 license = "EUPL-1.2"
 authors.workspace = true
 description = "Compliance-grade institutional PDF (PDF/A, PDF/UA-2, PAdES) — NORMORDIS reference implementation"
