@@ -46,6 +46,8 @@ Uma exigência de desenho: quando dois requisitos são mutuamente exclusivos (ex
 
 ### Início rápido
 
+> **Nota:** os elementos `Flow`/`Fixed Box` abaixo (`Section`, `Paragraph`, …) já produzem documentos completos. O motor de templates **NDT** é uma via *separada* (`push_ndt`) e ainda não renderiza layout posicionado — ver "Formatos NORMORDIS" mais abaixo.
+
 ```toml
 [dependencies]
 normordis-pdf = "3.0.0"
@@ -226,6 +228,8 @@ Its primary target is public administration, bound by the principle of legality.
 A design rule: when two requirements are mutually exclusive (e.g. PDF/A-1b with transparency), the library **refuses** and explains, citing the standard — it never silently emits a file that claims a conformance it does not have.
 
 ### Quick start
+
+> **Note:** the `Flow`/`Fixed Box` elements below (`Section`, `Paragraph`, …) already produce complete documents. The **NDT** template engine is a *separate* path (`push_ndt`) and does not render positioned layout yet — see "NORMORDIS formats" below.
 
 ```toml
 [dependencies]
