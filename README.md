@@ -1,6 +1,6 @@
 # normordis-pdf
 
-Compliance-grade institutional PDF generation in pure Rust — PDF/A, PDF/UA-2 and PAdES — reference implementation of the [NORMORDIS formats](https://github.com/Normordis/normordis-formats).
+Compliance-grade institutional PDF generation in pure Rust — PDF/A and PDF/UA-2, with signature integration suitable for PAdES workflows — reference implementation of the [NORMORDIS formats](https://github.com/Normordis/normordis-formats).
 
 [![Crate](https://img.shields.io/crates/v/normordis-pdf.svg)](https://crates.io/crates/normordis-pdf)
 [![Docs](https://docs.rs/normordis-pdf/badge.svg)](https://docs.rs/normordis-pdf)
@@ -26,7 +26,7 @@ Este repositório contém a crate `normordis-pdf` e três ferramentas auxiliares
 
 ### O que é
 
-`normordis-pdf` gera documentos formais — ofícios, relatórios, certidões, formulários — diretamente em Rust, sem dependências externas (sem LaTeX, sem Typst, sem Chromium, sem Java em tempo de execução). Produz PDF conforme às normas que a lei exige — **PDF/A** (arquivo, ISO 19005), **PDF/UA-2** (acessibilidade, ISO 14289-2:2024) e **PAdES** (assinatura digital) — e essa conformidade é verificada por um validador independente (veraPDF) em integração contínua, não apenas afirmada.
+`normordis-pdf` gera documentos formais — ofícios, relatórios, certidões, formulários — diretamente em Rust, sem dependências externas (sem LaTeX, sem Typst, sem Chromium, sem Java em tempo de execução). Produz PDF conforme às normas que a lei exige — **PDF/A** (arquivo, ISO 19005) e **PDF/UA-2** (acessibilidade, ISO 14289-2:2024) — verificado por um validador independente (veraPDF) em integração contínua, não apenas afirmado. A biblioteca também prepara e incorpora assinaturas digitais **compatíveis com fluxos PAdES**; ver a secção "Assinatura digital (PAdES)" para o que isso cobre e o que fica fora do âmbito da crate.
 
 O alvo primário é a administração pública, sujeita ao princípio da legalidade. Qualquer setor com obrigações de conformidade documental — financeiro, saúde, seguros — pode usá-lo nos mesmos termos (EUPL-1.2).
 
@@ -99,7 +99,9 @@ let pkcs7_der = my_hsm.sign(&prepared.bytes_to_sign())?;   // fora da biblioteca
 let signed_pdf = prepared.embed_signature(&pkcs7_der)?;
 ```
 
-Com a feature `tsa`, `timestamp_pkcs7` acrescenta um carimbo temporal RFC 3161 ao PKCS#7.
+Com a feature `tsa`, `timestamp_pkcs7` acrescenta um carimbo temporal RFC 3161 ao PKCS#7, produzindo um objeto CMS no estilo CAdES-T.
+
+**Âmbito e limites:** a crate prepara o campo de assinatura, o `/ByteRange` e o `/SubFilter /adbe.pkcs7.detached`, e incorpora a assinatura CMS/PKCS#7 detached que lhe é fornecida. Não emite certificados, não opera um HSM, não valida cadeias de confiança e não certifica por si só conformidade com um perfil PAdES Baseline específico (B-B, B-T, B-LT ou B-LTA) — não há ainda fluxo de validação PAdES, construção de DSS/VRI ou material LTV documentado neste repositório. Essas responsabilidades cabem a quem integra a biblioteca.
 
 ### Formatos NORMORDIS
 
@@ -205,7 +207,7 @@ Os itens re-exportados em `normordis_pdf::*` são considerados estáveis dentro 
 
 ### What it is
 
-`normordis-pdf` generates formal documents — official letters, reports, certificates, forms — directly from Rust, with no external dependency at run time (no LaTeX, no Typst, no Chromium, no Java). Output conforms to the standards the law requires — **PDF/A** (archival, ISO 19005), **PDF/UA-2** (accessibility, ISO 14289-2:2024) and **PAdES** (digital signatures) — and that conformance is checked by an independent validator (veraPDF) in CI rather than merely claimed.
+`normordis-pdf` generates formal documents — official letters, reports, certificates, forms — directly from Rust, with no external dependency at run time (no LaTeX, no Typst, no Chromium, no Java). Output conforms to the standards the law requires — **PDF/A** (archival, ISO 19005) and **PDF/UA-2** (accessibility, ISO 14289-2:2024) — checked by an independent validator (veraPDF) in CI rather than merely claimed. The library also prepares and embeds digital signatures **suitable for PAdES workflows**; see "Digital signatures (PAdES)" for what that covers and what stays out of the crate's scope.
 
 Its primary target is public administration, bound by the principle of legality. Any sector with document-compliance obligations — finance, health, insurance — can use it on the same terms (EUPL-1.2).
 
@@ -278,7 +280,9 @@ let pkcs7_der = my_hsm.sign(&prepared.bytes_to_sign())?;   // outside the librar
 let signed_pdf = prepared.embed_signature(&pkcs7_der)?;
 ```
 
-With the `tsa` feature, `timestamp_pkcs7` adds an RFC 3161 timestamp to the PKCS#7.
+With the `tsa` feature, `timestamp_pkcs7` adds an RFC 3161 timestamp to the PKCS#7, producing a CAdES-T-style CMS object.
+
+**Scope and limits:** the crate prepares the signature field, the `/ByteRange` and `/SubFilter /adbe.pkcs7.detached`, and embeds the detached CMS/PKCS#7 signature it is given. It does not issue certificates, operate an HSM, validate trust chains, or by itself certify conformance with a specific PAdES Baseline profile (B-B, B-T, B-LT or B-LTA) — this repository does not yet have a PAdES validation workflow, DSS/VRI construction, or documented LTV material. Those responsibilities belong to whoever integrates the library.
 
 ### NORMORDIS formats
 
