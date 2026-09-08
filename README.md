@@ -60,7 +60,7 @@ let pdf = DocumentBuilder::new("Relatório Mensal")
     .push(Section::new("1. Introdução", 1))
     .push(Paragraph::new("Este relatório descreve…").align(TextAlign::Justify))
     .push(Spacer::new(6.0))
-    .render_to_bytes()?;   // PDF/A-4f + PDF/UA-2 por omissão
+    .render_to_bytes()?;   // perfil PdfA4Ua2 por omissão — ver "Conformidade" acima para o que é declarado vs. verificado pelo veraPDF na CI vs. pendente
 
 std::fs::write("output.pdf", pdf)?;
 ```
@@ -243,7 +243,7 @@ let pdf = DocumentBuilder::new("Monthly Report")
     .push(Section::new("1. Introduction", 1))
     .push(Paragraph::new("This report describes…").align(TextAlign::Justify))
     .push(Spacer::new(6.0))
-    .render_to_bytes()?;   // PDF/A-4f + PDF/UA-2 by default
+    .render_to_bytes()?;   // PdfA4Ua2 profile by default — see "Conformance" above for what's declared vs. veraPDF-verified in CI vs. pending
 
 std::fs::write("output.pdf", pdf)?;
 ```
