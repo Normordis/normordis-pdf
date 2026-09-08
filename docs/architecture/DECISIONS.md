@@ -203,3 +203,64 @@ que a UA-2 do motor próprio já demonstra por si. Decisão do
 responsável: mantém-se no roteiro do projeto e é referida na
 candidatura como trabalho futuro; não é executada nem estimada em
 detalhe antes da submissão.
+
+**Nota de âmbito, para evitar leitura errada:** o resultado da
+pergunta 1 (`PdfA4Ua2` via krilla passa veraPDF) valida apenas o
+spike, correndo em `spike/krilla`. Não valida, e não deve ser lido
+como validando, a saída `PdfStandard::PdfA4Ua2` do motor de produção
+(`pdf-writer`) publicado na 3.0.0 — esse continua sem validação
+independente do perfil PDF/A-4f, conforme já indicado no README
+("Independent validation of the PDF/A-4f profile is pending"). Os dois
+motores são código distinto; um resultado positivo no krilla não é
+evidência sobre o comportamento do `pdf-writer`.
+
+## ADR-006 — MSRV declarado em 1.88, não 1.85
+
+- **Data:** 2026-09-08
+- **Estado:** aceite
+- **Decisão de:** Carlos Canuto Costa
+- **Proposta por:** agente (Claude Sonnet 5, Claude Code)
+- **Origem:** preparação da release 3.0.1 (correções de documentação e
+  metadados pedidas em resposta a uma verificação externa da 3.0.0);
+  o job "msrv" novo no CI falhou logo na primeira execução
+
+### Contexto
+A primeira tentativa declarou `rust-version = "1.85"`, por ser o piso
+teórico da edition 2024 (primeira stable a suportá-la). O job "msrv" do
+CI, criado nesta mesma release para validar isso de facto, falhou de
+imediato por duas causas independentes:
+
+1. **Sintaxe da própria crate:** `if ... && let ... { }` (*let-chains*)
+   é usado em 18 ocorrências, 9 ficheiros (`src/document.rs`,
+   `src/fonts.rs`, `src/template/renderer.rs`, `src/elements/footer.rs`,
+   `src/archive/integrity.rs`, `src/elements/paragraph.rs`,
+   `src/elements/fixed_image.rs`, `src/elements/header.rs`,
+   `src/backend/pdf_writer_backend.rs`). Let-chains estabilizou em
+   Rust **1.88.0** (26 de junho de 2025), não em 1.85 —
+   [rust-lang/rust#139951](https://github.com/rust-lang/rust/issues/139951).
+   Também `u32::is_multiple_of` (estável desde 1.87) era usado em dois
+   pontos, apanhado pelo lint `clippy::incompatible_msrv`.
+2. **Dependências transitivas:** `image@0.25.10` exige 1.88.0;
+   `icu_collections`, `icu_locale_core`, `icu_normalizer`,
+   `icu_properties`, `icu_provider`, `idna_adapter` (via `url`/IDNA)
+   exigem 1.86.
+
+### Decisão
+Declarar `rust-version = "1.88"` — o piso real, determinado pelo job de
+CI, não um valor teórico. Não reescrever os let-chains para baixar o
+MSRV nesta release: é uma alteração de lógica condicional em código de
+produção, fora do âmbito "só documentação e metadados" da 3.0.1.
+
+### Alternativas rejeitadas
+Manter 1.85 e reescrever let-chains em 9 ficheiros para a forma aninhada
+(`if let Some(x) = a { if cond { … } }`): tecnicamente possível, mas é
+mudança de código de produção que exigiria testes e revisão próprios,
+não cabe numa release de documentação. Não declarar `rust-version`
+nesta release: rejeitado porque o job "msrv" já existe e já provou o
+seu valor ao apanhar o erro na primeira execução — melhor declarar o
+valor certo do que remover a validação.
+
+### Consequências
+Descer o MSRV abaixo de 1.88 fica como trabalho futuro, condicional a
+reescrever os let-chains listados acima e a confirmar que as
+dependências transitivas também o permitem nessa altura.

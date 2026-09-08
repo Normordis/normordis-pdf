@@ -1,3 +1,5 @@
+#[cfg(feature = "system-fonts")]
+use normordis_pdf::DocumentBuilder;
 use normordis_pdf::{FontFamily, FontRegistry};
 
 #[test]

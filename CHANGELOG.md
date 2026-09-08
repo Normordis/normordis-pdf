@@ -6,6 +6,72 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) — versions fo
 
 ---
 
+## [3.0.1] — 2026-09-08
+
+Release essencialmente de documentação e metadados, motivada por uma
+verificação externa independente da publicação 3.0.0 em crates.io.
+Inclui também a correção de um bug pré-existente na feature `ffi`
+(opcional, não é feature por omissão), encontrado como efeito colateral
+de validar o MSRV — ver "Fixed" abaixo.
+
+### Fixed
+
+- **`ffi` (feature opcional) não compilava desde a própria 3.0.0**:
+  `create_pdf_from_ndt` usava uma API que já não existia
+  (`NdtDocument::meta`, `DocumentBuilder::push_boxed`) e chamava
+  `template::render` com argumentos do tipo errado. Sem testes sobre
+  `ffi.rs`, por isso nunca foi apanhado — a feature não é ligada por
+  omissão e a CI existente não compilava com `--all-features`. Corrigido
+  para delegar em `DocumentBuilder::push_ndt`, a mesma API pública usada
+  em Rust, em vez de reimplementar o pipeline NDT.
+- `ffi`: as 3 funções `pub extern "C"` (`generate_pdf_from_json`,
+  `free_pdf_result`, `generate_pdf_from_ndt`) desreferenciavam ponteiros
+  do chamador sem estarem marcadas `unsafe`, apanhado por
+  `cargo clippy --all-features` (`clippy::not_unsafe_ptr_arg_deref`).
+  Relevante para quem consome esta crate a partir de .NET, C++ ou outra
+  linguagem via FFI: passam a `pub unsafe extern "C"`, cada uma com
+  secção `# Safety` documentando o contrato exigido do chamador. Não
+  muda a ABI C — `unsafe` é só um marcador ao nível Rust.
+- `tests/fonts.rs`: teste sob `#[cfg(feature = "system-fonts")]` usava
+  `DocumentBuilder` sem o importar; só aparecia com `--all-features`.
+- `SECURITY.md`: URL de `normordis-formats` corrigido para o repositório
+  da organização (`github.com/Normordis/`), consistente com o resto da
+  documentação.
+
+### Changed
+
+- `description` do crate e README (PT+EN): a claim deixa de colocar
+  PAdES ao mesmo nível de PDF/A e PDF/UA-2 (normas verificadas por
+  veraPDF na CI); passa a "PAdES-ready signature integration" / "suitable
+  for PAdES workflows". Nova secção "Âmbito e limites" na assinatura
+  digital explicita o que a crate não faz: emitir certificados, operar
+  HSM, validar cadeias de confiança ou certificar um perfil PAdES
+  Baseline.
+- README (PT+EN): aviso de que `push_ndt` ainda não renderiza layout
+  posicionado duplicado junto ao início rápido, além da secção "Formatos
+  NORMORDIS" onde já existia.
+- README (PT+EN): comentário inline do quick-start sobre o perfil
+  `PdfA4Ua2` por omissão passa a remeter para a secção "Conformidade",
+  em vez de poder ser lido isoladamente como conformidade combinada já
+  validada.
+- `docs/architecture/DECISIONS.md` (ADR-005): nota de âmbito explícita —
+  o resultado do spike krilla (PDF/A-4f passa veraPDF) valida o spike,
+  não o motor de produção `pdf-writer` publicado na 3.0.0.
+- `Cargo.toml`: declarado `rust-version = "1.88"` — piso real, apurado
+  pelo novo job `msrv` do CI (não 1.85, o piso teórico da edition 2024:
+  a crate usa let-chains, estável só desde 1.88, e dependências
+  transitivas já pedem 1.86–1.88). Ver ADR-006. O job `msrv` compila o
+  crate publicado nessa versão a cada push.
+
+### Origem
+
+Achados 1, 2, 3, 4, 5 e 6 de uma revisão externa da publicação 3.0.0 em
+crates.io (link do repositório, claim PAdES, âmbito do spike krilla,
+aviso NDT, comentário do perfil por omissão, MSRV em falta), aceites e
+aplicados pelo responsável. O bug em `ffi.rs` não vem desse relatório —
+foi descoberto ao validar o MSRV com `--all-features`, e a correção foi
+autorizada pelo responsável durante esta mesma sessão.
+
 ## [3.0.0] — 2026-09-04
 
 ### Changed — BREAKING
