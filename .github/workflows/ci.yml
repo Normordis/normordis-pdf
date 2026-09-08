@@ -83,3 +83,28 @@ jobs:
 
       - name: cargo publish --dry-run
         run: cargo publish --dry-run
+
+  msrv:
+    name: MSRV (1.88)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust toolchain (rust-version declarado no Cargo.toml)
+        uses: dtolnay/rust-toolchain@1.88
+
+      - name: Cache cargo registry
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: msrv-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: msrv-cargo-
+
+      # Só o crate publicado, não o workspace inteiro: tools/spike-krilla é
+      # experimental (depende de krilla) e não faz parte da promessa de MSRV.
+      - name: cargo check -p normordis-pdf
+        run: cargo check -p normordis-pdf --all-features

@@ -2,8 +2,7 @@ use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::ptr;
 
-use crate::styles::DocumentStyle;
-use crate::template::{parse_ndt, parse_ndt_data, render as render_ndt_template};
+use crate::template::parse_ndt;
 use crate::{DocumentBuilder, NormordisPdfError};
 
 /// Gera um PDF a partir de um JSON de configuração.
@@ -16,8 +15,15 @@ use crate::{DocumentBuilder, NormordisPdfError};
 /// }
 /// Retorna um ponteiro para os bytes do PDF (alocado com malloc).
 /// O chamador deve liberar com `free_pdf_result`.
+///
+/// # Safety
+/// `json_config` deve ser nulo ou apontar para uma C-string válida,
+/// terminada em NUL, legível durante a chamada (contrato normal de
+/// `CStr::from_ptr`). O ponteiro devolvido, quando não nulo, só deve ser
+/// libertado com `free_pdf_result` — nunca com `free()`/`delete` do lado
+/// chamador, nem mais do que uma vez.
 #[unsafe(no_mangle)]
-pub extern "C" fn generate_pdf_from_json(json_config: *const c_char) -> *mut PdfResult {
+pub unsafe extern "C" fn generate_pdf_from_json(json_config: *const c_char) -> *mut PdfResult {
     if json_config.is_null() {
         return ptr::null_mut();
     }
@@ -41,9 +47,17 @@ pub extern "C" fn generate_pdf_from_json(json_config: *const c_char) -> *mut Pdf
     Box::into_raw(result)
 }
 
-/// Libera a memória alocada por `generate_pdf_from_json`.
+/// Liberta a memória alocada por `generate_pdf_from_json` ou
+/// `generate_pdf_from_ndt`.
+///
+/// # Safety
+/// `result` deve ser nulo ou um ponteiro devolvido por uma dessas duas
+/// funções desta mesma crate, ainda não libertado. Chamar duas vezes com
+/// o mesmo ponteiro (double free), ou passar um ponteiro de outra
+/// origem, é comportamento indefinido. O ponteiro não deve ser usado
+/// depois desta chamada.
 #[unsafe(no_mangle)]
-pub extern "C" fn free_pdf_result(result: *mut PdfResult) {
+pub unsafe extern "C" fn free_pdf_result(result: *mut PdfResult) {
     if !result.is_null() {
         unsafe { drop(Box::from_raw(result)) };
     }
@@ -64,8 +78,14 @@ pub struct PdfResult {
 ///
 /// Returns a `PdfResult` pointer on success, or null on error.
 /// The caller must free with `free_pdf_result`.
+///
+/// # Safety
+/// `ndt_json` e `data_json` devem ser nulos ou apontar cada um para uma
+/// C-string válida, terminada em NUL, legível durante a chamada. O
+/// ponteiro devolvido, quando não nulo, só deve ser libertado com
+/// `free_pdf_result`.
 #[unsafe(no_mangle)]
-pub extern "C" fn generate_pdf_from_ndt(
+pub unsafe extern "C" fn generate_pdf_from_ndt(
     ndt_json: *const c_char,
     data_json: *const c_char,
 ) -> *mut PdfResult {
@@ -89,23 +109,16 @@ pub extern "C" fn generate_pdf_from_ndt(
 }
 
 fn create_pdf_from_ndt(ndt_json: &str, data_json: &str) -> Result<Vec<u8>, NormordisPdfError> {
+    // Só para extrair o título antes de construir o builder — o parsing e a
+    // renderização propriamente ditos ficam a cargo de `push_ndt`, a mesma
+    // API pública usada por quem consome a crate em Rust (evita duplicar,
+    // e desalinhar, o pipeline NDT aqui).
     let doc = parse_ndt(ndt_json).map_err(|e| NormordisPdfError::Template(e.to_string()))?;
-    let data = parse_ndt_data(data_json).map_err(|e| NormordisPdfError::Template(e.to_string()))?;
+    let title = doc.titulo.as_deref().unwrap_or("Document");
 
-    let title = doc
-        .meta
-        .as_ref()
-        .and_then(|m| m.title.as_deref())
-        .unwrap_or("Document");
-    let style = DocumentStyle::default();
-    let elements = render_ndt_template(&doc, &data, &style)
-        .map_err(|e| NormordisPdfError::Template(e.to_string()))?;
-
-    let mut builder = DocumentBuilder::new(title);
-    for el in elements {
-        builder = builder.push_boxed(el);
-    }
-    builder.render_to_bytes()
+    DocumentBuilder::new(title)
+        .push_ndt(ndt_json, data_json)?
+        .render_to_bytes()
 }
 
 // Função interna para criar o PDF (adapta ao teu código real)
