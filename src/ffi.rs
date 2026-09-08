@@ -2,8 +2,7 @@ use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::ptr;
 
-use crate::styles::DocumentStyle;
-use crate::template::{parse_ndt, parse_ndt_data, render as render_ndt_template};
+use crate::template::parse_ndt;
 use crate::{DocumentBuilder, NormordisPdfError};
 
 /// Gera um PDF a partir de um JSON de configuração.
@@ -89,23 +88,16 @@ pub extern "C" fn generate_pdf_from_ndt(
 }
 
 fn create_pdf_from_ndt(ndt_json: &str, data_json: &str) -> Result<Vec<u8>, NormordisPdfError> {
+    // Só para extrair o título antes de construir o builder — o parsing e a
+    // renderização propriamente ditos ficam a cargo de `push_ndt`, a mesma
+    // API pública usada por quem consome a crate em Rust (evita duplicar,
+    // e desalinhar, o pipeline NDT aqui).
     let doc = parse_ndt(ndt_json).map_err(|e| NormordisPdfError::Template(e.to_string()))?;
-    let data = parse_ndt_data(data_json).map_err(|e| NormordisPdfError::Template(e.to_string()))?;
+    let title = doc.titulo.as_deref().unwrap_or("Document");
 
-    let title = doc
-        .meta
-        .as_ref()
-        .and_then(|m| m.title.as_deref())
-        .unwrap_or("Document");
-    let style = DocumentStyle::default();
-    let elements = render_ndt_template(&doc, &data, &style)
-        .map_err(|e| NormordisPdfError::Template(e.to_string()))?;
-
-    let mut builder = DocumentBuilder::new(title);
-    for el in elements {
-        builder = builder.push_boxed(el);
-    }
-    builder.render_to_bytes()
+    DocumentBuilder::new(title)
+        .push_ndt(ndt_json, data_json)?
+        .render_to_bytes()
 }
 
 // Função interna para criar o PDF (adapta ao teu código real)
