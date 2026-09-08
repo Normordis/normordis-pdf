@@ -43,10 +43,20 @@ Nunca inclua tokens, palavras-passe, chaves privadas, certificados privados,
 dados pessoais reais ou documentos operacionais. Exemplos e fixtures devem usar
 dados sintéticos.
 
+## Reporting regulatório (Cyber Resilience Act)
+
+Se uma vulnerabilidade neste crate estiver a ser **ativamente explorada**, ou
+constituir um incidente grave de segurança, aplica-se o procedimento de
+notificação regulatória do ecossistema NORMORDIS (CRA, Artigo 14), definido
+de forma centralizada em
+[normordis-formats/CRA_REPORTING.md](https://github.com/Normordis/normordis-formats/blob/main/CRA_REPORTING.md),
+com prazos de 24h/72h/14 dias para o CSIRT nacional (CERT.PT/CNCS) e a ENISA.
+Este repositório não duplica esse procedimento.
+
 ## Utilização de IA generativa
 
 O desenvolvimento deste projeto segue a política de utilização de IA generativa
 do ecossistema NORMORDIS, publicada em
-[normordis-formats/AI_USAGE.md](https://github.com/carloscanutocosta/normordis-formats/blob/main/AI_USAGE.md).
+[normordis-formats/AI_USAGE.md](https://github.com/Normordis/normordis-formats/blob/main/AI_USAGE.md).
 Código de autenticação, credenciais e controlo de acesso não é aceite a partir
 de geração assistida sem revisão linha a linha.
