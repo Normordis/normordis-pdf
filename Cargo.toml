@@ -19,7 +19,7 @@ edition = "2024"
 # dependências — ver docs/architecture/DECISIONS.md.
 rust-version = "1.88"
 license = "EUPL-1.2"
-version = "3.0.0"
+version = "3.0.1"
 authors = ["Carlos Canuto Costa"]
 
 [workspace.dependencies]
@@ -35,7 +35,7 @@ base64 = "0.22"
 
 [package]
 name = "normordis-pdf"
-version = "3.0.0"
+version = "3.0.1"
 edition.workspace = true
 rust-version.workspace = true
 license = "EUPL-1.2"

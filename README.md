@@ -50,7 +50,7 @@ Uma exigência de desenho: quando dois requisitos são mutuamente exclusivos (ex
 
 ```toml
 [dependencies]
-normordis-pdf = "3.0.0"
+normordis-pdf = "3.0.1"
 ```
 
 ```rust
@@ -192,7 +192,7 @@ cargo run --example <nome> -p normordis-pdf
 ### Constantes de versão
 
 ```rust
-normordis_pdf::VERSION          // "3.0.0" — versão da crate
+normordis_pdf::VERSION          // "3.0.1" — versão da crate
 normordis_pdf::NDT_VERSION      // "2.0.0" — NDT suportado
 normordis_pdf::NCRTF_VERSION    // "2.0.0" — NCRTF suportado
 normordis_pdf::ARCHIVE_VERSION  // formato do arquivo de renderização
@@ -233,7 +233,7 @@ A design rule: when two requirements are mutually exclusive (e.g. PDF/A-1b with 
 
 ```toml
 [dependencies]
-normordis-pdf = "3.0.0"
+normordis-pdf = "3.0.1"
 ```
 
 ```rust
@@ -375,7 +375,7 @@ cargo run --example <name> -p normordis-pdf
 ### Version constants
 
 ```rust
-normordis_pdf::VERSION          // "3.0.0" — crate version
+normordis_pdf::VERSION          // "3.0.1" — crate version
 normordis_pdf::NDT_VERSION      // "2.0.0" — supported NDT
 normordis_pdf::NCRTF_VERSION    // "2.0.0" — supported NCRTF
 normordis_pdf::ARCHIVE_VERSION  // render-archive format
