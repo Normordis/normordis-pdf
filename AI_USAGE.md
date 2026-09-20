@@ -25,10 +25,8 @@ Este projeto utiliza assistentes de código com IA generativa como **auxiliar de
 implementação sob controlo arquitetural humano**. A ferramenta em uso é o
 Claude Code (Anthropic). Os modelos usados variam por sessão: habitualmente
 Claude Sonnet (versão 5 à data de entrada em vigor), pontualmente Claude
-Fable 5.1 ou Claude Opus. "Claude" sem versão não é um registo válido: o
-**nome e a versão exatos do modelo** são registados em cada commit
-assistido, conforme `docs/ai-provenance.md`, e em cada linha do registo de
-candidatura.
+Fable 5.1 ou Claude Opus. O nome e a versão exatos do modelo são registados quando conhecidos; versões
+desconhecidas são declaradas sem reconstrução especulativa.
 
 A IA não substitui a responsabilidade humana em nenhuma fase de decisão.
 
@@ -89,16 +87,7 @@ ETSI), esse validador é a referência final, não os testes do próprio projeto
 
 ## 5. Registo de proveniência
 
-Ver `docs/ai-provenance.md`. Resumo:
-
-- commits com contribuição substantiva de IA identificam o modelo na linha de
-  autor e incluem o prompt (ou resumo fiel) e uma nota sobre o output;
-- commits de revisão ou correção humana sobre output de IA são registados
-  como autoria humana normal, com nota no corpo quando relevante;
-- o Claude Code acrescenta automaticamente um trailer `Co-Authored-By` com o
-  nome e versão do modelo ativo na sessão a todos os commits que cria; esse
-  trailer é um marcador adicional e não substitui a linha de autor descrita
-  acima, mas serve para confirmar qual o modelo que estava em uso.
+Ver `docs/ai-provenance.md` e a convenção de autoria humana abaixo.
 
 ## 6. Âmbito
 
@@ -115,3 +104,46 @@ deste; ver `docs/genai-application-disclosure-template.md`.
 
 Questões sobre o uso de IA neste projeto: Carlos Canuto Costa,
 carloscanutocosta@gmail.com.
+
+## Autoria humana e proveniência explícita (2026-09-19)
+
+A autoria Git é exclusivamente humana. Carlos Canuto Costa assume a autoria e
+responsabilidade do projeto. IA é assistência/ferramenta: não deve constar dos
+campos de autor ou committer, de trailers de coautoria, nem de mecanismos que
+atribuam a modelos o estatuto de contributor GitHub. Desativar a coautoria
+automática da ferramenta antes de criar commits.
+
+Toda a assistência substantiva, incluindo documentação e testes, é declarada
+no corpo do commit. Identificar o modelo exato quando conhecido; quando não
+houver evidência da versão, declarar essa limitação sem adivinhar.
+
+O corpo contém `AI assistance:`, `Human decision:`, `AI contribution:` e
+`Human review:`. A decisão identifica o requisito, pedido, issue, ADR ou critério
+aprovado pelo responsável. A contribuição descreve o trabalho efetivo da IA.
+`Human review` é preenchido exclusivamente pelo responsável humano, com as
+verificações realmente feitas antes da aceitação. Não criar commits novos com
+placeholders, revisão vazia ou uma alegação de revisão escrita pelo agente.
+Sem revisão humana fornecida, conservar as alterações como diff para revisão.
+
+Alterações normativas, schemas e critérios de conformidade precisam de origem
+humana identificável. A IA pode ajudar a redigir e a propagar uma decisão humana
+para schemas, exemplos, fixtures, índices e testes; não define autonomamente
+requisitos. A conformidade não pode depender apenas da mesma sessão/modelo que
+implementou o comportamento: exige critérios derivados da especificação e
+verificação independente, incluindo validadores externos quando disponíveis.
+
+Não apagar nem falsificar proveniência. A normalização histórica autorizada
+preserva os registos originais em backup e os SHA num mapa de auditoria.
+Declarações históricas de revisão são preservadas como declarações, sem nova
+certificação. Uma lacuna histórica é registada como `Human review status`, nunca
+convertida numa revisão fictícia; isto não permite aceitar novos commits sem
+revisão. Uma revisão posterior só pode ser atestada pelo humano que a efetuou,
+com data, âmbito e limitações. Verificações do agente são identificadas como
+automatizadas e não contam como revisão humana.
+
+Quando a divisão histórica não puder ser estabelecida, registar:
+
+> Human provenance note:
+> The precise division between human and AI contribution cannot be reconstructed reliably from the available record.
+
+A ausência de declaração num commit histórico não demonstra ausência de IA.

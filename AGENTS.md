@@ -108,7 +108,7 @@ Antes de fazer mudanças não triviais, explicitar de forma curta:
 4. **Atualizar documentação** — `CHANGELOG.md` sempre; `README.md`, `MANUAL.md`, `MANUAL.en.md` conforme o impacto.
 5. Executar testes/checks adequados.
 6. Entregar com resumo curto, riscos e validação.
-7. **Preparar a mensagem de commit** conforme `docs/ai-provenance.md`, com o campo `Revisão humana:` por preencher pelo responsável (ver secção 12).
+7. **Preparar a mensagem de commit** conforme `docs/ai-provenance.md`, sem criar commit antes de receber a revisão efetiva do responsável (ver secção 12).
 
 ## 11. Checklist rápida por módulo
 
@@ -141,7 +141,7 @@ garantir as condições seguintes em toda a alteração.
   dependência ou de segurança que ainda não foi tomada, **parar e
   apresentar opções**; não decidir por omissão. A decisão é registada
   quando tomada (secção 12.2) e só depois se implementa.
-- Citar essa origem na mensagem de commit (campo `Prompt:` ou corpo).
+- Citar essa origem na mensagem de commit (campo `Human decision:`).
 
 ### 12.2 Registo de decisões
 
@@ -157,14 +157,11 @@ garantir as condições seguintes em toda a alteração.
 
 ### 12.3 Mensagem de commit
 
-- Preparar sempre a mensagem no formato de `docs/ai-provenance.md`: linha de
-  autor com nome e versão exatos do modelo, `Prompt:`, `Output:` e
-  `Revisão humana:`.
-- O campo `Revisão humana:` **nunca é preenchido pelo agente**. Fica com o
-  texto `<a preencher pelo responsável>` e é o responsável que o completa
-  antes do commit, descrevendo o que verificou ou alterou. Um commit
-  assistido sem esse campo preenchido não deve ser feito.
-- Não fazer commit sem confirmação explícita do responsável.
+- Autoria Git exclusivamente humana; identificar a IA apenas no corpo.
+- Usar `AI assistance:`, `Human decision:`, `AI contribution:` e `Human review:`.
+- Só o responsável preenche `Human review`, relatando verificações reais.
+- Não criar commits com placeholders ou revisão inventada pelo agente.
+- Preparar o diff e aguardar a revisão humana para novos commits.
 
 ### 12.4 Testes de conformidade independentes
 
@@ -181,5 +178,6 @@ garantir as condições seguintes em toda a alteração.
 - Não altera especificações de formato, critérios de aceitação nem
   requisitos normativos por iniciativa própria; sinaliza e espera.
 - Não apresenta código gerado como revisto; a revisão é do responsável.
-- Não remove nem reescreve registos de proveniência anteriores.
+- Não apaga nem falsifica proveniência. Uma normalização histórica explicitamente
+  autorizada preserva evidência, backups, mapas de SHA e lacunas declaradas.
 

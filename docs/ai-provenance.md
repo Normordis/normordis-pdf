@@ -1,102 +1,69 @@
-# Convenção de registo de proveniência de IA (commits)
+# Convenção de registo de proveniência de IA
 
-Este documento define como distinguir, no histórico git, contribuições
-assistidas por IA de contribuições humanas diretas, conforme a secção
-"Transparency & logging" da política de IA generativa da NLnet. Complementa
-o `AI_USAGE.md` na raiz do repositório.
+Complementa [AI_USAGE.md](../AI_USAGE.md). Esta convenção trata do desenvolvimento
+do projeto, não do bloco `proveniencia_ia` dos documentos NDF.
 
-## Regra geral
+## Autoria humana e proveniência explícita (2026-09-19)
 
-- **Commit com código gerado ou assistido por IA de forma substantiva:** a
-  linha de autor indica o modelo, e o corpo inclui o prompt (ou resumo fiel)
-  e uma nota sobre o output.
-- **Commit de revisão ou correção humana sobre esse código:** autoria humana
-  normal; o corpo referencia o commit de origem.
-- **Commit exclusivamente humano:** formato normal, sem menção a IA. Não é
-  necessário assinalar a ausência de IA.
+A autoria Git é exclusivamente humana. Carlos Canuto Costa assume a autoria e
+responsabilidade do projeto. IA é assistência/ferramenta: não deve constar dos
+campos de autor ou committer, de trailers de coautoria, nem de mecanismos que
+atribuam a modelos o estatuto de contributor GitHub. Desativar a coautoria
+automática da ferramenta antes de criar commits.
 
-Considera-se "substantivo" o uso de IA que afeta materialmente o conteúdo do
-commit: código de implementação, alterações de comportamento, lógica de
-validação. Correções ortográficas, formatação ou pequenos ajustes sugeridos
-pela ferramenta não exigem registo.
+Toda a assistência substantiva, incluindo documentação e testes, é declarada
+no corpo do commit. Identificar o modelo exato quando conhecido; quando não
+houver evidência da versão, declarar essa limitação sem adivinhar.
 
-## Identificação do modelo
+O corpo contém `AI assistance:`, `Human decision:`, `AI contribution:` e
+`Human review:`. A decisão identifica o requisito, pedido, issue, ADR ou critério
+aprovado pelo responsável. A contribuição descreve o trabalho efetivo da IA.
+`Human review` é preenchido exclusivamente pelo responsável humano, com as
+verificações realmente feitas antes da aceitação. Não criar commits novos com
+placeholders, revisão vazia ou uma alegação de revisão escrita pelo agente.
+Sem revisão humana fornecida, conservar as alterações como diff para revisão.
 
-"Claude" ou "Claude Code" não chega. Cada commit assistido indica o **nome e
-a versão exatos** do modelo que produziu o output, tal como aparecem na
-sessão (por exemplo `Claude Sonnet 5`, `Claude Opus 4.8`, `Claude Fable
-5.1`). Se numa sessão se alternou de modelo, indica-se o modelo que gerou a
-parte substantiva do commit; se ambos contribuíram, listam-se os dois.
+Alterações normativas, schemas e critérios de conformidade precisam de origem
+humana identificável. A IA pode ajudar a redigir e a propagar uma decisão humana
+para schemas, exemplos, fixtures, índices e testes; não define autonomamente
+requisitos. A conformidade não pode depender apenas da mesma sessão/modelo que
+implementou o comportamento: exige critérios derivados da especificação e
+verificação independente, incluindo validadores externos quando disponíveis.
 
-O Claude Code acrescenta automaticamente um trailer `Co-Authored-By` com o
-modelo ativo. Antes de fazer commit, confirma-se que o trailer e a linha de
-autor nomeiam o mesmo modelo; em caso de discrepância prevalece o que foi
-efetivamente usado e corrige-se a mensagem.
+Não apagar nem falsificar proveniência. A normalização histórica autorizada
+preserva os registos originais em backup e os SHA num mapa de auditoria.
+Declarações históricas de revisão são preservadas como declarações, sem nova
+certificação. Uma lacuna histórica é registada como `Human review status`, nunca
+convertida numa revisão fictícia; isto não permite aceitar novos commits sem
+revisão. Uma revisão posterior só pode ser atestada pelo humano que a efetuou,
+com data, âmbito e limitações. Verificações do agente são identificadas como
+automatizadas e não contam como revisão humana.
 
-## Formato: commit assistido por IA
+Quando a divisão histórica não puder ser estabelecida, registar:
 
-```
-Author: Carlos Canuto Costa with <Modelo Versão> (Claude Code) <carloscanutocosta@gmail.com>
-Date:   <data>
+> Human provenance note:
+> The precise division between human and AI contribution cannot be reconstructed reliably from the available record.
 
-<título curto do commit>
+A ausência de declaração num commit histórico não demonstra ausência de IA.
 
-Prompt: <prompt usado, ou resumo fiel se o prompt for muito longo>
-Output: (este commit) | <resumo do output, se editado antes do commit>
-Revisão humana: <o que foi verificado ou alterado manualmente antes de aceitar>
+## Estrutura da mensagem
 
-Co-Authored-By: <Modelo Versão> <noreply@anthropic.com>
-```
+Após o título, usar os quatro campos seguintes no corpo (sem trailers de
+coautoria de IA):
 
-A linha de autor com "with <modelo>" segue o exemplo literal da política da
-NLnet e é a marca principal; o trailer é redundante mas mantém-se.
+- `AI assistance:` — modelo efetivamente usado, com versão quando conhecida.
+- `Human decision:` — decisão/requisito e origem humana identificável.
+- `AI contribution:` — redação, implementação, propagação, testes ou revisão
+  assistida efetivamente realizados.
+- `Human review:` — relato concreto fornecido pelo responsável humano.
 
-Para definir a linha de autor num commit concreto (exemplo com Sonnet 5):
+Preservar prompts e notas de output quando disponíveis. Nunca inventar um
+prompt, uma decisão ou uma revisão para completar a estrutura. Esta descrição
+não é uma mensagem pronta a commitar.
 
-```
-git commit --author="Carlos Canuto Costa with Claude Sonnet 5 (Claude Code) <carloscanutocosta@gmail.com>"
-```
+## Auditoria
 
-### Exemplo adaptado ao projeto
-
-```
-Author: Carlos Canuto Costa with Claude Sonnet 5 (Claude Code) <carloscanutocosta@gmail.com>
-Date:   Thu Sep 10 2026
-
-Gerar testes de estrutura de tags PDF/UA-2 para normordis-pdf
-
-Prompt: Gerar testes unitários para validar a estrutura de tags
-semânticos exigida por PDF/UA-2 secção 7.1, a partir dos casos
-de teste já definidos em docs/pdfua2-cases.md.
-Output: (este commit)
-Revisão humana: casos verificados manualmente contra ISO 14289-2;
-dois testes ajustados por não cobrirem tabelas aninhadas.
-
-Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
-```
-
-## Formato: commit humano a corrigir ou integrar output de IA
-
-```
-Author: Carlos Canuto Costa <carloscanutocosta@gmail.com>
-Date:   <data>
-
-Corrigir geração de metadados XMP em <hash do commit anterior>
-
-Ajusta o output gerado por IA no commit referido: o schema XMP
-omitia o namespace pdfuaid; adicionado manualmente após verificação
-contra ISO 19005-3.
-```
-
-## Quando não é necessário registo por commit
-
-Se a IA for usada apenas para testes ou documentação (não para código de
-implementação), a política da NLnet considera suficiente a descrição geral
-do `AI_USAGE.md`. O registo por commit continua a ser preferível quando for
-prático.
-
-## Âmbito temporal
-
-Esta convenção aplica-se a partir de 2026-09-04, data de entrada em vigor do
-`AI_USAGE.md`, a todo o trabalho novo, financiado ou não. Não se aplica
-retroativamente ao histórico anterior.
+Localizar assistência declarada com `git log --all --grep="AI assistance:"`.
+Consultar também os registos históricos de prompts e os mapas de normalização.
+A convenção nova aplica-se ao trabalho futuro; a normalização histórica corrige
+metadados mediante evidência, sem alterar requisitos ou resultados funcionais.
